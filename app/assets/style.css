@@ -1,0 +1,177 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;  /* Modern font */
+}
+
+.header-container {
+    /* Adjust padding and margins as necessary */
+    padding: 10px 0;
+}
+
+/* Custom Image for Title */
+.title-image {
+    height: 120px;
+    width: 120px;
+}
+
+/* Style for the Title Span */
+.title-span {
+    margin-left: 20px;
+    font-size: 3em;  
+}
+
+.subtitle-span {
+    display: block;  
+    font-size: 1.5em;  
+    margin-top: 10px;  
+    font-style: italic;
+}
+
+.align-items-center {
+    align-items: center;
+}
+
+.my-col {
+    padding-right: 2px;
+    padding-left: 2px;
+}
+
+.ask-button {
+    background-color: transparent;
+    border: none;
+}
+
+/* Custom Image for the Send Button */
+.ask-button-img {
+    height: 64px;
+}
+
+.chat-box-hidden {
+    display: none;
+}
+
+.chat-box-shown {
+    display: block;
+}
+
+/* Style for the Message Input */
+.message-input {
+    width: 100%;
+    height: 100px;
+    border-radius: 10px;
+}
+
+/* Style for User and System Icons */
+.user-icon, .system-icon {
+    height: 32px;
+    width: 32px;
+    vertical-align: middle;
+    margin-right: 5px;
+}
+
+/* Container Style */
+.container-style {
+    max-width: 80%;
+    top: 20px;
+}
+
+.chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.chat-datetime {
+    margin-left: 8px;  
+    font-size: 0.85em; 
+}
+
+.chat-icon {
+    height: 32px;
+    width: 32px;
+    vertical-align: middle;
+    margin-right: 5px;
+}
+
+.user-bubble .chat-icon {
+    float: left;
+}
+
+.system-bubble .chat-icon {
+    float: left;
+}
+
+.chat-box {
+    height: 400px;
+    overflow-y: scroll;
+    padding: 10px;
+}
+
+.chat-bubble {
+    border-radius: 15px;  /* Modern rounded corners */
+    padding: 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);  /* Soft shadow for depth */
+}
+
+.user-bubble {
+    margin-left: 2%;
+    width: 95%;
+    text-align: left;  /* Text alignment */
+}
+
+.system-bubble {
+    margin-left: 2%;
+    width: 95%;
+    text-align: left;  /* Text alignment */
+}
+
+/* Customizing code text within markdown */
+.chat-message.system-message code {
+    font-family: courier;
+    font-style: italic;
+}
+
+.chat-message {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.user-message {
+    text-align: left;
+}
+
+.system-message {
+    text-align: left;
+}
+
+.system-error-message {
+    text-align: left;
+    font-style: italic;
+}
+
+.chat-top-hr {
+    height: 2px;
+    border: none;
+}
+
+.chat-bottom-hr {
+    height: 2px;
+    border: none;
+}
+
+.custom-footer-style {
+    text-align: left;
+    margin-top: 50px;  
+    margin-left: 20px;
+} 
+
+.info-button {
+    background-color: transparent;
+    border: none;
+    vertical-align: top;
+}
+
+.info-button-img {
+    height: 20px
+}

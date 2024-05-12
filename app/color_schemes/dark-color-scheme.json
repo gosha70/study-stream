@@ -1,0 +1,14 @@
+{
+    "left_panel": {
+        "toolbar-css": "background-color: #FFF; color: orange; border-style: none;",
+        "main-css": "background-color: #AAA; color: #222222;" 
+    },
+    "center_panel": {
+        "toolbar-css": "background-color: #99999; color: #050505;",
+        "main-css": "background-color: #050505; color: #DDD;" 
+    },
+    "right_panel": {
+        "toolbar-css": "background-color: #FFF; color: orange;",
+        "main-css": "background-color: #121212; color: #AAA;" 
+    }       
+}
