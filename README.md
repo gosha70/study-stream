@@ -42,6 +42,7 @@ To start using StudyStream, clone this repository and follow the setup instructi
 git clone https://github.com/gosha70/study-stream.git
 cd studystream
 # follow specific setup instructions for your environment
+```
 
 ### Install required libraries
 
