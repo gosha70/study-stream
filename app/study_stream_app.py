@@ -7,7 +7,7 @@ import logging
 import json
 from retrieval_constants import CURRENT_DIRECTORY
 
-from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow)
+from PyQt5.QtWidgets import (QApplication, QMainWindow)
 from PyQt5.QtCore import Qt
 
 from models.model_info import ModelInfo
@@ -16,7 +16,7 @@ from embeddings.embedding_database import load_vector_store
 from embeddings.unstructured.document_splitter import DocumentSplitter
 
 from prompt_info import PromptInfo
-from .study_classes_panel import StudyClassesPanel
+from .study_subject_panel import StudySubjectPanel
 from .study_document_view import StudyDocumentView
 from .study_stream_error import StudyStreamException
 from .study_assistor_panel import StudyAssistorPanel
@@ -74,18 +74,8 @@ class StudyStreamApp(QMainWindow):
         self.setWindowTitle("Study Stream")
         self.showMaximized()
 
-        # Left Panel: Toolbar and List of PDFs
-        left_panel = StudyClassesPanel(
-            parent=self, 
-            app_config=self.app_config, 
-            color_scheme=self.color_scheme["left_panel"],
-            asserts_path=self.current_dir,
-            db=self.docs_db,
-            logging=self.logging
-        )
-
         # Central Panel: Display PDF
-        central_panel = StudyDocumentView(
+        self.central_panel = StudyDocumentView(
             parent=self, 
             app_config=self.app_config, 
             color_scheme=self.color_scheme["center_panel"],
@@ -94,8 +84,19 @@ class StudyStreamApp(QMainWindow):
             logging=self.logging
         )
 
+        # Left Panel: Toolbar and List of PDFs
+        self.left_panel = StudySubjectPanel(
+            parent=self, 
+            document_view=self.central_panel,
+            app_config=self.app_config, 
+            color_scheme=self.color_scheme["left_panel"],
+            asserts_path=self.current_dir,
+            db=self.docs_db,
+            logging=self.logging
+        )
+
         # Right Panel: Chat with LLM
-        right_panel = StudyAssistorPanel(
+        self.right_panel = StudyAssistorPanel(
             parent=self, 
             system_prompt=self.prompt_info,
             app_config=self.app_config, 
@@ -107,9 +108,9 @@ class StudyStreamApp(QMainWindow):
             logging=self.logging
         )
        
-        self.addDockWidget(Qt.LeftDockWidgetArea, left_panel)
-        self.setCentralWidget(central_panel)
-        self.addDockWidget(Qt.RightDockWidgetArea, right_panel)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.left_panel)
+        self.setCentralWidget(self.central_panel)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.right_panel)
 
     def show(self):
         super().show() 

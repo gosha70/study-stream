@@ -3,8 +3,11 @@
 import fitz  # PyMuPDF
 
 from PyQt5.QtCore import QObject, Qt
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QFileDialog, QListWidgetItem)
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QListWidget, QPushButton, QLabel, QFileDialog, QListWidgetItem)
 from PyQt5.QtGui import QPixmap, QImage
+
+from study_stream_api.study_stream_subject import StudyStreamSubject
+from study_stream_api.study_stream_document import StudyStreamDocument
 
 
 class StudyDocumentView(QWidget):
@@ -24,7 +27,11 @@ class StudyDocumentView(QWidget):
         
     def initUI(self):
         # Central Panel: Display PDF
-        central_panel = QVBoxLayout()
+        central_panel = QVBoxLayout(self)
+        self.pdf_list = QListWidget()
+        self.pdf_list.clicked.connect(self.load_selected_document)
+        #central_panel.addWidget(self.pdf_list)
+
         self.label = QLabel()
         self.label.setAlignment(Qt.AlignCenter)
         central_panel.addWidget(self.label)
@@ -36,20 +43,39 @@ class StudyDocumentView(QWidget):
         self.btn_next = QPushButton('Next Page')
         self.btn_next.clicked.connect(self.nextPage)
         central_panel.addWidget(self.btn_next)
+   
+    def show_content(self, item):
+        if isinstance(item, StudyStreamSubject):
+            pass
+        elif isinstance(item, StudyStreamDocument):  
+            self.show_document(path=item.file_path)
 
     def openPDF(self):
         path, _ = QFileDialog.getOpenFileName(self, "Open PDF", "", "PDF files (*.pdf);;All files (*)")
+        self.show_document(path=path)
+
+    def show_document(self, path: str):    
         if path:
             self.doc = fitz.open(path)
+            print(f"Opened the document: {self.doc}")
             self.pdf_files.append(path)
-            self.updatePDFList()
+            self.load_document()
             self.showPage(0)
 
-    def updatePDFList(self):
+    def load_document(self):
         self.pdf_list.clear()
         for file in self.pdf_files:
+            print(f"Loading the document from {file}")
             item = QListWidgetItem(file.split('/')[-1])
+            item.setData(Qt.UserRole, file)
             self.pdf_list.addItem(item)
+    
+    def load_selected_document(self):
+        item = self.pdf_list.currentItem()
+        if item:
+            path = item.data(Qt.UserRole)
+            self.doc = fitz.open(path)
+            self.showPage(0)        
 
     def showPage(self, index):
         if self.doc:

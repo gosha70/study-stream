@@ -1,5 +1,5 @@
 # Copyright (c) EGOGE - All Rights Reserved.
-# This software may be used and distributed according to the terms of the CC-BY-SA-4.0 license.
+# This software may be used and distributed according to the terms of the Apache-2.0 license.
 import logging
 from huggingface_hub import hf_hub_download
 from langchain_community.llms import LlamaCpp

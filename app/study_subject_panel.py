@@ -1,8 +1,7 @@
 # Copyright (c) EGOGE - All Rights Reserved.
 # This software may be used and distributed according to the terms of the Apache-2.0 license.
-
 import fitz  # PyMuPDF
-from PyQt5.QtCore import QObject, Qt, QTimer
+from PyQt5.QtCore import QObject, Qt, QTimer, QVariant
 from PyQt5.QtWidgets import (QDockWidget, QFileDialog, QToolBar, QAction, QWidget,
                              QTreeWidget, QTreeWidgetItem, QMenu, QVBoxLayout)
 from PyQt5.QtGui import QIcon, QPixmap, QTransform
@@ -10,28 +9,31 @@ from PyQt5.QtGui import QIcon, QPixmap, QTransform
 from langchain_community.vectorstores import Chroma
 from embeddings.unstructured.document_splitter import DocumentSplitter
 from embeddings.embedding_database import add_file_content_to_db
+
 from .study_task import TaskWorker
-from .task_observer import TaskObserver
+from .study_document_view import StudyDocumentView
+from study_stream_api.study_stream_subject import StudyStreamSubject
+from study_stream_api.study_stream_document import StudyStreamDocument, DocumentStatus
+from embeddings.unstructured.file_type import FileType
 
-DEFAULT_FOLDER_NAME = 'New Class'
+DEFAULT_FOLDER_NAME = 'New Subject'
 
-class StudyClassesPanel(QDockWidget, TaskObserver):
-    def __init__(self, parent: QObject, app_config, color_scheme, asserts_path: str, db: Chroma, logging):
+class StudySubjectPanel(QDockWidget):
+    def __init__(self, parent: QObject, document_view: StudyDocumentView, app_config, color_scheme, asserts_path: str, db: Chroma, logging):
         super().__init__(parent=parent)
         self.parent = parent
+        self.document_view = document_view
         self.logging = logging
         self.asserts_path = asserts_path
         self.color_scheme = color_scheme
         self.app_config = app_config
         self.db = db
         self.document_splitter = DocumentSplitter(logging)
-        self.doc = None
-        self.pdf_files = {}
         self.page_index = 0  # Initialize page_index here
         self.selected_folder = None
         self.selected_file = None
         self.file_in_progress = None 
-        self.file_task = TaskWorker()
+        self.file_task = None
         self.initPanel()
 
     def get_image_path(self, image_key: str)-> str:
@@ -85,26 +87,6 @@ class StudyClassesPanel(QDockWidget, TaskObserver):
         # Set the main widget of the dock widget with the layout
         self.setWidget(widget)
 
-    def on_task_complete(self, result):
-        if self.file_in_progress:
-            display_name = self.file_in_progress.text(0)
-            self.logging.info(f"Has finished processing '{display_name}': {result}")
-            if self.timer:
-                self.timer.stop()
-                self.timer = None            
-            self.file_in_progress.setIcon(0, self.active_file_icon) 
-            self.file_in_progress = None    
-
-    def on_task_error(self, error):
-        if self.file_in_progress:
-            display_name = self.file_in_progress.text(0)
-            self.logging.info(f"Failed to rocess '{display_name}': {error}")
-            if self.timer:
-                self.timer.stop()
-                self.timer = None
-            self.file_in_progress.setIcon(0, self.inactive_file_icon) 
-            self.file_in_progress = None    
-
     def togglePanel(self):
         # This method should handle the toggling of the panel's visibility or size
         pass
@@ -116,28 +98,34 @@ class StudyClassesPanel(QDockWidget, TaskObserver):
         self.class_tree.clearSelection()
         self.class_tree.setCurrentItem(None) 
 
-    def on_item_expanded(self, item):
-        if item.text(0) not in self.pdf_files.keys():   
+    def on_item_expanded(self, item: QTreeWidgetItem):
+        item_target = item.data(0, Qt.UserRole)
+        if isinstance(item_target, StudyStreamSubject):
             item.setIcon(0, self.folder_selected_icon)
             if self.selected_folder is None:
                 self.selected_folder = item
 
-    def on_item_collapsed(self, item):
-        if item.text(0) not in self.pdf_files.keys():  
+    def on_item_collapsed(self, item: QTreeWidgetItem):
+        item_target = item.data(0, Qt.UserRole)
+        if isinstance(item_target, StudyStreamSubject):
             item.setIcon(0, self.folder_icon)
             if item == self.selected_folder:
                 self.selected_folder = None
 
-    def onItemChanged(self, item, column):
+    def onItemChanged(self, item: QTreeWidgetItem, column):
         if item.text(column).strip() == '':
             item.setText(column, DEFAULT_FOLDER_NAME)  # Provide a default name if empty
+            item_target = item.data(0, Qt.UserRole)
+            if isinstance(item_target, StudyStreamSubject):
+                item_target.class_name = DEFAULT_FOLDER_NAME
 
     def onContextMenu(self, point):
         item = self.class_tree.itemAt(point)
-        if item is not None:
+        if isinstance(item, QTreeWidgetItem):
             self.class_tree.setCurrentItem(item)
-            menu = QMenu()     
-            if item.text(0) in self.pdf_files.keys() and self.file_in_progress is None and item.icon(0) == self.inactive_file_icon:   
+            menu = QMenu()
+            item_target = item.data(0, Qt.UserRole)
+            if isinstance(item_target, StudyStreamDocument) and self.file_in_progress is None:   
                 load_action = menu.addAction("Load")
             else:    
                 load_action = None
@@ -146,14 +134,13 @@ class StudyClassesPanel(QDockWidget, TaskObserver):
 
             action = menu.exec_(self.class_tree.viewport().mapToGlobal(point))
             if action == rename_action:
-                if item.flags() & Qt.ItemIsEditable:
-                    self.class_tree.editItem(item, 0)  # Only edit if the item is set to be editable
+                self.handlEdit(item)   
             elif action == delete_action:
                 self.handleDelete(item)   
             elif load_action and action == load_action:     
                 self.processDocument(item)       
 
-    def handleDelete(self, item):
+    def handleDelete(self, item: QTreeWidgetItem):
         parent = item.parent()
         if parent:
             parent.removeChild(item)
@@ -161,19 +148,61 @@ class StudyClassesPanel(QDockWidget, TaskObserver):
             index = self.class_tree.indexOfTopLevelItem(item)
             self.class_tree.takeTopLevelItem(index)
     
-    def processDocument(self, file_item: QTreeWidgetItem):    
+    def handlEdit(self, item: QTreeWidgetItem):
+        if item.flags() & Qt.ItemIsEditable:
+            new_name = item.text(0)
+            item_target = item.data(0, Qt.UserRole)
+            if isinstance(item_target, StudyStreamDocument):
+                item_target.name = new_name
+            elif isinstance(item_target, StudyStreamSubject):
+                item_target.class_name = new_name
+                    
+            self.class_tree.editItem(item, 0)  # Only edit if the item is set to be editable
+
+    def processDocument(self, item: QTreeWidgetItem):    
         # Setup timer for icon animation
-        display_name = file_item.text(0)
-        file_path = self.pdf_files[display_name]
-        if file_path:
-            self.file_task.run(self, add_file_content_to_db, self.db, self.document_splitter, file_path)
-            #add_file_content_to_db(docs_db=self.db, document_splitter=self.document_splitter, file_name=file_path)
-            self.rotate_icon_angle = 0
-            self.file_in_progress = file_item 
-            self.rotate_icon()       
-            self.timer = QTimer()
-            self.timer.timeout.connect(self.rotate_icon)
-            self.timer.start(500)
+        item_target = item.data(0, Qt.UserRole)
+        if isinstance(item_target, StudyStreamDocument):
+            if item_target.file_path:
+                # Asynchroneously run the adding Documemt to the embedding vector store 
+                self.rotate_icon_angle = 0
+                self.file_in_progress = item 
+                item_target.status = DocumentStatus.IN_PROGRESS
+                self.rotate_icon() 
+                self.async_task(document=item_target)
+                self.timer = QTimer()
+                self.timer.timeout.connect(self.rotate_icon)
+                self.timer.start(500)
+    
+    def async_task(self, document: StudyStreamDocument):   
+        self.file_task = TaskWorker(add_file_content_to_db, self.db, self.document_splitter, document.file_path)
+        self.file_task.finished.connect(lambda result: self.on_task_complete(result))
+        self.file_task.error.connect(lambda error: self.on_task_error(error))
+        self.file_task.run()
+
+    def on_task_complete(self, result):
+        if self.file_in_progress:
+            item_target = self.file_in_progress.data(0, Qt.UserRole)
+            if isinstance(item_target, StudyStreamDocument):
+                self.logging.info(f"Has finished processing '{item_target.name}': {result}")
+                if self.timer:
+                    self.timer.stop()
+                    self.timer = None            
+                item_target.status = DocumentStatus.PROCESSED   
+                self.file_in_progress.setIcon(0, self.active_file_icon) 
+                self.file_in_progress = None    
+
+    def on_task_error(self, error):
+        if self.file_in_progress:
+            item_target = self.file_in_progress.data(0, Qt.UserRole)
+            if isinstance(item_target, StudyStreamDocument):
+                self.logging.info(f"Failed to rocess '{item_target.name}': {error}")
+                if self.timer:
+                    self.timer.stop()
+                    self.timer = None                        
+                item_target.status = DocumentStatus.NEW       
+                self.file_in_progress.setIcon(0, self.inactive_file_icon) 
+                self.file_in_progress = None        
 
     def rotate_icon(self):    
         self.rotate_icon_angle += 10
@@ -183,23 +212,18 @@ class StudyClassesPanel(QDockWidget, TaskObserver):
         rotated_pixmap = self.rotating_icon.transformed(transform, mode=Qt.FastTransformation)
         final_icon = QIcon(rotated_pixmap)
         self.file_in_progress.setIcon(0, final_icon) 
-    
-    def addDocument(self):
-        path, _ = QFileDialog.getOpenFileName(self.parent, "Open PDF", "", "PDF files (*.pdf);;All files (*)")
-        if path:
-            self.doc = fitz.open(path)
-            display_name = path.split('/')[-1]
-            self.pdf_files[display_name] = path
-            self.updatePDFList(item_name=display_name)
 
     def newClass(self):
         selected_item = self.class_tree.currentItem()
-        if selected_item and selected_item.text(0) in self.pdf_files.keys(): 
-            selected_item = None
+        if selected_item:
+            item_target = selected_item.data(0, Qt.UserRole)
+            if isinstance(item_target, StudyStreamDocument):
+                selected_item = None
         new_class = QTreeWidgetItem()
         new_class.setText(0, DEFAULT_FOLDER_NAME)
         new_class.setIcon(0, self.folder_icon) 
-        new_class.setFlags(new_class.flags() | Qt.ItemIsEditable)  # Make the item editable
+        new_class.setFlags(new_class.flags() | Qt.ItemIsEditable)  # Make the item editable         
+        new_class.setData(0, Qt.UserRole, QVariant(StudyStreamSubject(class_name=DEFAULT_FOLDER_NAME)))
         if selected_item:
             selected_item.addChild(new_class)          
             self.class_tree.expandItem(selected_item)
@@ -207,14 +231,30 @@ class StudyClassesPanel(QDockWidget, TaskObserver):
             self.class_tree.addTopLevelItem(new_class)  
         self.selected_folder = new_class    
         self.class_tree.editItem(new_class, 0)  # Optional: start editing immediately after adding
+        
+    def addDocument(self):
+        path, _ = QFileDialog.getOpenFileName(self.parent, "Open PDF", "", "PDF files (*.pdf);;All files (*)")
+        if path:
+            self.updatePDFList(file_path=path)
 
-    def updatePDFList(self, item_name: str):
+    def updatePDFList(self, file_path: str):
+        display_name = file_path.split('/')[-1]
         selected_item = self.class_tree.currentItem()
-        if selected_item and selected_item.text(0) in self.pdf_files.keys(): 
-            selected_item = self.selected_folder
+        if selected_item:
+            item_target = selected_item.data(0, Qt.UserRole)
+            if isinstance(item_target, StudyStreamDocument):
+                selected_item = self.selected_folder
         new_file = QTreeWidgetItem()
-        new_file.setText(0, item_name)
+        new_file.setText(0, display_name)
         new_file.setIcon(0, self.inactive_file_icon) 
+        study_document = StudyStreamDocument(
+            name=display_name, 
+            file_path=file_path, 
+            file_type=FileType.PDF,
+            status=DocumentStatus.NEW
+        )
+        self.document_view.show_content(item=study_document)            
+        new_file.setData(0, Qt.UserRole, QVariant(study_document))
         if selected_item:
             selected_item.addChild(new_file)            
             self.class_tree.expandItem(selected_item)
@@ -226,11 +266,13 @@ class StudyClassesPanel(QDockWidget, TaskObserver):
         current_item = self.class_tree.currentItem()
         if current_item:
             print(current_item.text(0))
-            if current_item.text(0) not in self.pdf_files.keys():   
+            item_target = current_item.data(0, Qt.UserRole)
+            if isinstance(item_target, StudyStreamDocument): 
                 if self.selected_file == current_item:
                     self.selected_file = None
                 else:                 
                     self.selected_file = current_item
+                    self.document_view.show_content(item=current_item)         
             else:     
                 if self.selected_folder == current_item:
                     self.selected_folder = None

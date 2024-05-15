@@ -2,8 +2,6 @@
 # This software may be used and distributed according to the terms of the CC-BY-SA-4.0 license.
 from enum import Enum
 
-from langchain.text_splitter import Language
-
 class FileType(str, Enum): 
     """
     Enum defines supported file types/extensions
