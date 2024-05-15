@@ -42,3 +42,20 @@ To start using StudyStream, clone this repository and follow the setup instructi
 git clone https://github.com/gosha70/study-stream.git
 cd studystream
 # follow specific setup instructions for your environment
+
+### Install required libraries
+
+```
+pip3 install -r requirements.txt
+```
+
+### Run **Study Stream** Application
+
+```
+python3 -m app.study_stream_app
+```
+
+### Current UI
+
+<img width="1240" alt="image" src="https://github.com/gosha70/study-stream/assets/17832712/72d42dae-6424-4cd7-9524-d206ce9a3ac4">
+
