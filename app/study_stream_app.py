@@ -16,7 +16,7 @@ from embeddings.embedding_database import load_vector_store
 from embeddings.unstructured.document_splitter import DocumentSplitter
 
 from prompt_info import PromptInfo
-from .study_subject_panel import StudySubjectPanel
+from .study_directory_panel import StudyDirectoryPanel
 from .study_document_view import StudyDocumentView
 from .study_stream_error import StudyStreamException
 from .study_assistor_panel import StudyAssistorPanel
@@ -85,7 +85,7 @@ class StudyStreamApp(QMainWindow):
         )
 
         # Left Panel: Toolbar and List of PDFs
-        self.left_panel = StudySubjectPanel(
+        self.left_panel = StudyDirectoryPanel(
             parent=self, 
             document_view=self.central_panel,
             app_config=self.app_config, 
@@ -100,7 +100,7 @@ class StudyStreamApp(QMainWindow):
             parent=self, 
             system_prompt=self.prompt_info,
             app_config=self.app_config, 
-            color_scheme=self.color_scheme["left_panel"],
+            color_scheme=self.color_scheme["right_panel"],
             asserts_path=self.current_dir,
             db=self.docs_db,
             model_info=self.model_info, 

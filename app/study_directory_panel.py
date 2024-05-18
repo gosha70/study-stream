@@ -11,6 +11,7 @@ from embeddings.unstructured.document_splitter import DocumentSplitter
 from embeddings.embedding_database import add_file_content_to_db
 
 from .study_task import TaskWorker
+from .study_message_type import StudyMessageType
 from .study_document_view import StudyDocumentView
 from study_stream_api.study_stream_subject import StudyStreamSubject
 from study_stream_api.study_stream_document import StudyStreamDocument, DocumentStatus
@@ -18,7 +19,7 @@ from embeddings.unstructured.file_type import FileType
 
 DEFAULT_FOLDER_NAME = 'New Subject'
 
-class StudySubjectPanel(QDockWidget):
+class StudyDirectoryPanel(QDockWidget):
     def __init__(self, parent: QObject, document_view: StudyDocumentView, app_config, color_scheme, asserts_path: str, db: Chroma, logging):
         super().__init__(parent=parent)
         self.parent = parent
@@ -169,10 +170,10 @@ class StudySubjectPanel(QDockWidget):
                 self.file_in_progress = item 
                 item_target.status = DocumentStatus.IN_PROGRESS
                 self.rotate_icon() 
-                self.async_task(document=item_target)
                 self.timer = QTimer()
                 self.timer.timeout.connect(self.rotate_icon)
                 self.timer.start(500)
+                self.async_task(document=item_target)
     
     def async_task(self, document: StudyStreamDocument):   
         self.file_task = TaskWorker(add_file_content_to_db, self.db, self.document_splitter, document.file_path)
@@ -205,12 +206,7 @@ class StudySubjectPanel(QDockWidget):
                 self.file_in_progress = None        
 
     def rotate_icon(self):    
-        self.rotate_icon_angle += 10
-        if self.rotate_icon_angle > 360:
-            self.rotate_icon_angle = 0        
-        transform = QTransform().rotate(self.rotate_icon_angle)
-        rotated_pixmap = self.rotating_icon.transformed(transform, mode=Qt.FastTransformation)
-        final_icon = QIcon(rotated_pixmap)
+        final_icon, self.rotate_icon_angle = StudyMessageType.rotate_icon(rotating_icon=self.rotating_icon, rotate_icon_angle=self.rotate_icon_angle)
         self.file_in_progress.setIcon(0, final_icon) 
 
     def newClass(self):

@@ -9,6 +9,13 @@
     },
     "right_panel": {
         "toolbar-css": "background-color: #FFF; color: orange;",
-        "main-css": "background-color: #121212; color: #AAA;" 
+        "main-css": "background-color: #121212; color: #AAA;",
+        "chat-icon-css": "background-color: #333;  border: none; border-radius: 24px;",
+        "chat-text-css": "border: 2px solid #ccc; border-radius: 20px; padding: 10px; background-color: #444; color: white;",
+        "datetime-css": "color: #AAAAAA; font-style: italic;",
+        "datetime-user-css": "margin-right: 100px; color: #AAAAAA; font-style: italic;",
+        "user-message-css": "border: 2px solid #DD9955; border-radius: 15px; padding: 10px; margin-left: 10px; margin-right: 100px; background-color: #FFFDFD; color: black;",
+        "ai-icon-css": "background-color: #333;  border: none; border-radius: 24px; margin-left: 90px;",
+        "ai-message-css": "border: 2px solid #9955DD; border-radius: 15px; padding: 10px; margin-left: 100px; background-color: #FDFDFF; color: black;"
     }       
 }
