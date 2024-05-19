@@ -47,7 +47,8 @@ class StudyDirectoryPanel(QDockWidget):
         self.inactive_file_icon = QIcon(self.get_image_path("inactive_file_icon"))
         self.active_file_icon = QIcon(self.get_image_path("active_file_icon"))  
         self.loading_icon = QIcon(self.get_image_path("loading_icon"))          
-        self.rotating_icon = QPixmap(self.get_image_path("loading_icon")) 
+        self.rotating_icon = QPixmap(self.get_image_path("loading_icon"))         
+        self.school_icon = QPixmap(self.get_image_path("school_icon")) 
 
         self.setAllowedAreas(Qt.LeftDockWidgetArea)
         # Widget that holds the content of the dock
@@ -56,6 +57,9 @@ class StudyDirectoryPanel(QDockWidget):
 
         # Left Panel: Toolbar and List of PDFs
         toolbar = QToolBar("My Classes")
+        school_action = QAction(QIcon(self.get_image_path("school_icon")), 'School', self.parent)
+        school_action.triggered.connect(self.addSchool)  # You need to define this method
+        toolbar.addAction(school_action)
         # Setup the actions  app_config["file_attach_icon"])
         open_action = QAction(QIcon(self.get_image_path("new_doc_icon")), 'Load Document', self.parent)  # Use actual path to your icon
         open_action.triggered.connect(self.addDocument)
@@ -66,9 +70,6 @@ class StudyDirectoryPanel(QDockWidget):
         refresh_action = QAction(QIcon(self.get_image_path("refresh_icon")), 'Refresh', self.parent)
         refresh_action.triggered.connect(self.refresh)  # Currently a no-op
         toolbar.addAction(refresh_action)
-        toggle_action = QAction(QIcon(self.get_image_path("toggle_in_icon")), 'Hide', self.parent)
-        toggle_action.triggered.connect(self.togglePanel)  # You need to define this method
-        toolbar.addAction(toggle_action)
         toolbar.setStyleSheet(self.color_scheme["toolbar-css"])            
         # Add the toolbar to the layout
         layout.addWidget(toolbar)    
@@ -88,7 +89,7 @@ class StudyDirectoryPanel(QDockWidget):
         # Set the main widget of the dock widget with the layout
         self.setWidget(widget)
 
-    def togglePanel(self):
+    def addSchool(self):
         # This method should handle the toggling of the panel's visibility or size
         pass
 

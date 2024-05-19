@@ -5,6 +5,7 @@ from typing import Tuple
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QPixmap, QTransform
 
+
 # Static dictionary to hold additional data
 icon_map = {}
 

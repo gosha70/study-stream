@@ -44,17 +44,18 @@ class StudyAssistorPanel(QDockWidget):
 
         chat_widget = QWidget()  # This will hold all the chat components
         chat_layout = QVBoxLayout(chat_widget)
-        chat_layout.setContentsMargins(10, 10, 10, 10)
-        chat_layout.setSpacing(10)
+        chat_layout.setContentsMargins(5, 5, 5, 5)
+        chat_layout.setSpacing(5)
 
         # Scroll area for chat display
         self.scroll_area = QScrollArea(chat_widget)
         self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setStyleSheet('{ background: transparent; border: none; }')
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
         self.scroll_layout.setContentsMargins(0, 0, 0, 0)
         self.scroll_layout.setAlignment(Qt.AlignTop)
-        self.scroll_layout.setSpacing(10)
+        self.scroll_layout.setSpacing(5)
         self.scroll_area.setWidget(self.scroll_content)
         chat_layout.addWidget(self.scroll_area)
 
@@ -63,7 +64,7 @@ class StudyAssistorPanel(QDockWidget):
         input_area_layout = QHBoxLayout(input_area)
         input_area_layout.setContentsMargins(10, 10, 10, 10)
         input_area_layout.setSpacing(10)
-        input_area_layout.setAlignment(Qt.AlignTop)  # Ensure the input area is aligned at the top
+        input_area_layout.setAlignment(Qt.AlignTop)
 
         # CSS for chat
         print(f"Scheme: {self.color_scheme}")
@@ -71,7 +72,6 @@ class StudyAssistorPanel(QDockWidget):
         self.ai_icon_css = self.color_scheme['ai-icon-css']
         self.user_message = self.color_scheme['user-message-css']
         self.ai_message = self.color_scheme['ai-message-css']
-        self.user_message = self.color_scheme['user-message-css']
         self.datetime_css = self.color_scheme['datetime-css']
         self.datetime_user_css = self.color_scheme['datetime-user-css']
 
@@ -99,7 +99,7 @@ class StudyAssistorPanel(QDockWidget):
         self.send_button.setIconSize(QSize(32, 32))  # Increased icon size
         self.send_button.setFixedSize(48, 48)
         self.send_button.setStyleSheet(self.icon_css)
-        self.send_button.clicked.connect(self.sendMessage)
+        self.send_button.clicked.connect(self.send_message)
         input_area_layout.addWidget(self.send_button, alignment=Qt.AlignTop)
 
         # Add input_area to main_layout
@@ -107,9 +107,12 @@ class StudyAssistorPanel(QDockWidget):
         
         self.setWidget(chat_widget)
     
-    def sendMessage(self):
+    def send_message(self):
         self.set_chat_state(enabled=False)
         question = self.chat_input.toPlainText()
+        self.send_question(question=question)
+
+    def send_question(self, question: str):    
         self.add_message(
             message=question, 
             message_type=StudyMessageType.USER, 
@@ -134,7 +137,6 @@ class StudyAssistorPanel(QDockWidget):
             rotating_icon=self.rotating_send_button_icon, 
             rotate_icon_angle=self.rotate_icon_angle
         )
-        print(f"{new_icon} - {self.rotate_icon_angle}")
         self.send_button.setIcon(new_icon)     
         
     def ask_ai(self, question: str):
@@ -181,9 +183,15 @@ class StudyAssistorPanel(QDockWidget):
             self.chat_input.setPlaceholderText(self.app_config['chat_waiting_message'])
             self.chat_input.setEnabled(False)
 
-
     def add_message(self, message: str, message_type: StudyMessageType, text_css: str, icon_css: str, datetime_css: str):
         icon = message_type.get_icon(app_config=self.app_config, asserts_path=self.asserts_path)
         message_widget = StudyMessageWidget(message=message, icon=icon, text_css=text_css, icon_css=icon_css, datetime_css=datetime_css)
-        self.scroll_layout.addWidget(message_widget)
-        self.scroll_content.adjustSize()
+        self.scroll_layout.addWidget(message_widget)        
+        self.scroll_to_bottom(widget_height=message_widget.height())
+
+    def scroll_to_bottom(self, widget_height: int):
+        # Scroll the vertical scrollbar to the maximum position
+        self.scroll_area.verticalScrollBar().setValue(
+            self.scroll_area.verticalScrollBar().maximum() + widget_height
+        )
+        self.scroll_area.show()
