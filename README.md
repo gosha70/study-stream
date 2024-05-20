@@ -55,8 +55,15 @@ pip3 install -r requirements.txt
 ```
 python3 -m app.study_stream_app
 ```
+### Database 
+All user study items are now stored in the local  `PostgreSQL` database. 
+The database is automatically created and populated on the firth application run. The database settings can be found in the local `.env` file.
+
+<img width="730" alt="image" src="https://github.com/gosha70/study-stream/assets/17832712/fff027bb-0f19-47d9-9961-4a5e661deca8">
+
 
 ### Current UI
 
-<img width="1240" alt="image" src="https://github.com/gosha70/study-stream/assets/17832712/72d42dae-6424-4cd7-9524-d206ce9a3ac4">
+<img width="1376" alt="image" src="https://github.com/gosha70/study-stream/assets/17832712/d2b616cc-b702-425c-b472-c01992c79dac">
+
 
