@@ -43,7 +43,7 @@ class FileLoaderQuery:
         file_loader_query = FileLoaderQuery()
 
         for file_type_name in file_types: 
-            file_type = FileType.get_file_type(file_type_name)
+            file_type = FileType.from_str(file_type_name)
             if file_type is not None:
                 patterns = pattern_mapping.get(file_type, ['**/*'])  # Default pattern if not specified      
                 file_loader_query.add_file_type(file_type, patterns)

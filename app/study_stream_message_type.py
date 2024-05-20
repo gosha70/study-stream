@@ -2,14 +2,13 @@
 # This software may be used and distributed according to the terms of the Apache-2.0 license.
 from enum import Enum
 from typing import Tuple
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon, QPixmap, QTransform
-
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon, QPixmap, QTransform
 
 # Static dictionary to hold additional data
 icon_map = {}
 
-class StudyMessageType(Enum):
+class StudyStreamMessageType(Enum):
     USER = ("user_icon")
     SYSTEM = ("system_icon")
     BOOKMARK = ("file_attach_icon")
@@ -23,7 +22,7 @@ class StudyMessageType(Enum):
         if rotate_icon_angle > 360:
             rotate_icon_angle = 0        
         transform = QTransform().rotate(rotate_icon_angle)
-        rotated_pixmap = rotating_icon.transformed(transform, mode=Qt.FastTransformation)
+        rotated_pixmap = rotating_icon.transformed(transform, mode=Qt.TransformationMode.FastTransformation)
         return QIcon(rotated_pixmap), rotate_icon_angle   
     
     def get_icon(self, app_config, asserts_path: str) -> QPixmap:

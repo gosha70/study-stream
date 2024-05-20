@@ -1,93 +1,86 @@
 # Copyright (c) EGOGE - All Rights Reserved.
 # This software may be used and distributed according to the terms of the Apache-2.0 license.
-from enum import Enum
 from datetime import datetime
-
+from typing import List
+import pytz
+from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, SmallInteger
+from sqlalchemy.orm import relationship
+from .study_stream_message import StudyStreamMessage
+from .study_stream_message_link import Base
+from .study_stream_document_status import StudyStreamDocumentStatus
 from embeddings.unstructured.file_type import FileType
+from .study_stream_message_link_type import StudyStreamMessageLinkType
 
-class DocumentStatus(Enum):
-    """
-    Enum defines the status of the document in the Study Stream applicationt. 
-    """
-    NEW = 1
-    IN_PROGRESS = 2
-    PROCESSED = 3
-    
 
 """
-Stores the information about a class document a student added  and read 
-in the Study Stream applicationt. 
+Stores the information about a class document a student added and read 
+in the Study Stream application. 
 """
-class StudyStreamDocument:
-    def __init__(
-            self, 
-            name: str, 
-            file_path: str, 
-            file_type: FileType, 
-            status: DocumentStatus):
-        self._name = name
-        self._file_path = file_path
-        self._file_type = file_type
-        self._status = status
-        ## LATER - allow to specify the creation date
-        self._creation_date = datetime.now()
-        self._in_progress_date = None
-        self._processed_date = None
-    
-    @property
-    def creation_date(self):
-        return self._creation_date
-    
-    @property
-    def in_progress_date(self):
-        return self._in_progress_date
-    
-    @property
-    def processed_date(self):
-        return self._processed_date
-    
-    @property
-    def name(self):
-        return self._name
+class StudyStreamDocument(Base):
+    __tablename__ = 'study_stream_document'
 
-    @name.setter
-    def name(self, value):
-        self._name = value
+    id = Column(Integer, primary_key=True)
+    subject_id = Column(Integer, ForeignKey('study_stream_subject.id', ondelete='CASCADE'))
+    name = Column(String(255), nullable=False)
+    file_path = Column(String(255), nullable=False)
+    file_type = Column(SmallInteger, nullable=False)
+    status = Column(SmallInteger, nullable=False)
+    creation_date = Column(TIMESTAMP, nullable=False, default=datetime.now)
+    in_progress_date = Column(TIMESTAMP)
+    processed_date = Column(TIMESTAMP)
+
+    def __init__(self, name: str, file_path: str, file_type_enum: FileType, status_enum: StudyStreamDocumentStatus):
+        self.name = name
+        self.file_path = file_path
+        self.file_type = file_type_enum.int_value  # Store the enum value
+        self.status = status_enum.value  # Store the enum value
+        self.creation_date = datetime.now(tz=pytz.utc)
+        self.in_progress_date = None
+        self.processed_date = None
+
+     
+    @property
+    def status_enum(self):
+        return StudyStreamDocumentStatus(self.status)
+
+    @status_enum.setter
+    def status_enum(self, value):
+        self.status = value.value
+        if self.status == StudyStreamDocumentStatus.IN_PROGRESS:
+            self.in_progress_date = datetime.now()
+        elif self.status == StudyStreamDocumentStatus.PROCESSED:   
+            self.processed_date = datetime.now() 
     
     @property
-    def file_path(self):
-        return self._file_path
+    def file_type_enum(self):
+        return FileType.from_int(self.type)
 
-    @file_path.setter
-    def file_path(self, value):
-        self._file_path = value
+    @file_type_enum.setter
+    def file_type_enum(self, value):
+        self.file_type = value.int_value  
     
-    @property
-    def status(self):
-        return self._status
+    def add_message(self, session, message: StudyStreamMessage):
+        StudyStreamMessage.link_message(session, message.id, StudyStreamMessageLinkType.DOCUMENT, self.id)
 
-    @status.setter
-    def status(self, value):
-        self._status = value
-        if self._status == DocumentStatus.IN_PROGRESS:
-            self._in_progress_date = datetime.now()
-        elif self._status == DocumentStatus.PROCESSED:   
-            self._processed_date = datetime.now() 
-    
-    @property
-    def file_type(self):
-        return self._file_type
+    # CRUD operations
+    @staticmethod
+    def create(session, document):
+        session.add(document)
+        session.commit()
+        return document
 
-    @file_type.setter
-    def file_type(self, value):
-        self._file_type = value    
-    
-    @property
-    def status(self):
-        return self._status
+    @staticmethod
+    def read(session, document_id):
+        return session.query(StudyStreamDocument).filter_by(id=document_id).first()
 
-    @status.setter
-    def status(self, value):
-        self._status = value    
+    def update(self, session, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        session.commit()
 
-    
+    @staticmethod
+    def delete(session, document_id):
+        document = session.query(StudyStreamDocument).filter_by(id=document_id).first()
+        if document:
+            session.delete(document)
+            session.commit()

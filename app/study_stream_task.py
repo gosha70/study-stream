@@ -1,10 +1,11 @@
 # Copyright (c) EGOGE - All Rights Reserved.
 # This software may be used and distributed according to the terms of the Apache-2.0 license.
-from PyQt5.QtCore import QObject, QThread, pyqtSignal
+from PySide6.QtCore import QObject, QThread
+from PySide6.QtCore import Signal
 
-class TaskWorker(QObject):
-    finished = pyqtSignal(object)  # Signal to indicate task completion
-    error = pyqtSignal(Exception)  # Signal to pass exceptions
+class StudyStreamTaskWorker(QObject):
+    finished = Signal(object)  # Signal to indicate task completion
+    error = Signal(Exception)  # Signal to pass exceptions
 
     def __init__(self, func, *args, **kwargs):
         super().__init__()

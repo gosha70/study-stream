@@ -1,14 +1,17 @@
 # Copyright (c) EGOGE - All Rights Reserved.
 # This software may be used and distributed according to the terms of the Apache-2.0 license.
 import sys
+import traceback
 import os
+import platform
+import subprocess
 import argparse
 import logging
 import json
 from retrieval_constants import CURRENT_DIRECTORY
 
-from PyQt5.QtWidgets import (QApplication, QMainWindow)
-from PyQt5.QtCore import Qt
+from PySide6.QtWidgets import (QApplication, QMainWindow)
+from PySide6.QtCore import Qt
 
 from models.model_info import ModelInfo
 from embeddings.embeddings_constants import DEFAULT_COLLECTION_NAME
@@ -16,10 +19,11 @@ from embeddings.embedding_database import load_vector_store
 from embeddings.unstructured.document_splitter import DocumentSplitter
 
 from prompt_info import PromptInfo
-from .study_directory_panel import StudyDirectoryPanel
-from .study_document_view import StudyDocumentView
+from .study_stream_directory_panel import StudyStreamDirectoryPanel
+from .study_stream_document_view import StudyStreamDocumentView
 from .study_stream_error import StudyStreamException
-from .study_assistor_panel import StudyAssistorPanel
+from .study_stream_assistor_panel import StudyStreamAssistorPanel
+from db.study_stream_dao import check_study_stream_database
 
 
 class StudyStreamApp(QMainWindow):
@@ -42,7 +46,6 @@ class StudyStreamApp(QMainWindow):
         self.page_index = 0  # Initialize page_index here
     
     def start_model(self, args):
-        print('start_model')
         # Init ML/AI models
         self.next_question_delay = self.app_config["next_question_delay"]
         # The number of seconds passed b/w questions
@@ -75,7 +78,7 @@ class StudyStreamApp(QMainWindow):
         self.showMaximized()
 
         # Central Panel: Display PDF
-        self.central_panel = StudyDocumentView(
+        self.central_panel = StudyStreamDocumentView(
             parent=self, 
             app_config=self.app_config, 
             color_scheme=self.color_scheme["center_panel"],
@@ -85,7 +88,7 @@ class StudyStreamApp(QMainWindow):
         )
 
         # Left Panel: Toolbar and List of PDFs
-        self.left_panel = StudyDirectoryPanel(
+        self.left_panel = StudyStreamDirectoryPanel(
             parent=self, 
             document_view=self.central_panel,
             app_config=self.app_config, 
@@ -96,7 +99,7 @@ class StudyStreamApp(QMainWindow):
         )
 
         # Right Panel: Chat with LLM
-        self.right_panel = StudyAssistorPanel(
+        self.right_panel = StudyStreamAssistorPanel(
             parent=self, 
             system_prompt=self.prompt_info,
             app_config=self.app_config, 
@@ -108,9 +111,9 @@ class StudyStreamApp(QMainWindow):
             logging=self.logging
         )
        
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.left_panel)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.left_panel)
         self.setCentralWidget(self.central_panel)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.right_panel)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.right_panel)
 
     def show(self):
         super().show() 
@@ -153,6 +156,18 @@ def process_arguments():
     # Parse the arguments
     return parser.parse_args()
 
+def install_and_configure_postgresql(logging):
+    os_type = platform.system()    
+    if os_type in ["Darwin", "Linux"]:
+        logging.info(f"Setting up the database on {os_type} ...")
+        subprocess.run(["bash", "utils/db_setup_linux.sh"], check=True)
+    else:
+        # LATER: Support for Windows:
+        # subprocess.run(["cmd", "utils/db_setup_win.bat"], check=True)
+        logging.error(f"Does not support the database installation for {os_type}")
+        raise Exception(f"Unsupported OS: {os_type}")
+
+
 if __name__ == '__main__':
     # Set the logging level to INFO    
     logging.basicConfig(
@@ -163,10 +178,16 @@ if __name__ == '__main__':
 
     # Parse the arguments
     args = process_arguments()
-    verbose = args.verbose   
+    verbose = args.verbose  
+    #install_and_configure_postgresql(logging) 
+    check_study_stream_database(logging)
 
-    app = QApplication(sys.argv)
-    main_app = StudyStreamApp(arguments=args, logging=logging)
-    main_app.show()
-    sys.exit(app.exec_())
+    try:
+        app = QApplication(sys.argv)
+        main_app = StudyStreamApp(arguments=args, logging=logging)
+        main_app.show()
+        sys.exit(app.exec())
+    except Exception as e:
+        print("An error occurred:")
+        traceback.print_exc()
  

@@ -79,7 +79,7 @@ class DocumentSplitter:
         Returns:
         - (List[Document]): the list of unstructured Documents
         """ 
-        file_type = FileType.get_file_type_by_extension(file_name=file_path)   
+        file_type = FileType.from_str_by_extension(file_name=file_path)   
         test_splitter = BaseFileConverter.get_text_splitter(file_type=file_type) 
         return self.load_split_file(text_splitter=test_splitter, file_type=file_type, file_path=file_path)  
     

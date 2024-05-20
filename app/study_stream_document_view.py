@@ -2,15 +2,15 @@
 # This software may be used and distributed according to the terms of the Apache-2.0 license.
 import fitz  # PyMuPDF
 
-from PyQt5.QtCore import QObject, Qt
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QListWidget, QPushButton, QLabel, QFileDialog, QListWidgetItem)
-from PyQt5.QtGui import QPixmap, QImage
+from PySide6.QtCore import QObject, Qt
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QListWidget, QPushButton, QLabel, QFileDialog, QListWidgetItem)
+from PySide6.QtGui import QPixmap, QImage
 
 from study_stream_api.study_stream_subject import StudyStreamSubject
 from study_stream_api.study_stream_document import StudyStreamDocument
 
 
-class StudyDocumentView(QWidget):
+class StudyStreamDocumentView(QWidget):
     def __init__(self, parent: QObject, app_config, color_scheme, asserts_path: str, verbose: bool, logging):
         super().__init__()
         self.parent = parent
@@ -33,7 +33,7 @@ class StudyDocumentView(QWidget):
         #central_panel.addWidget(self.pdf_list)
 
         self.label = QLabel()
-        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         central_panel.addWidget(self.label)
 
         self.btn_prev = QPushButton('Previous Page')
@@ -67,13 +67,13 @@ class StudyDocumentView(QWidget):
         for file in self.pdf_files:
             print(f"Loading the document from {file}")
             item = QListWidgetItem(file.split('/')[-1])
-            item.setData(Qt.UserRole, file)
+            item.setData(Qt.ItemDataRole.UserRole, file)
             self.pdf_list.addItem(item)
     
     def load_selected_document(self):
         item = self.pdf_list.currentItem()
         if item:
-            path = item.data(Qt.UserRole)
+            path = item.data(Qt.ItemDataRole.UserRole)
             self.doc = fitz.open(path)
             self.showPage(0)        
 
@@ -82,7 +82,7 @@ class StudyDocumentView(QWidget):
             self.page_index = index  # Update the page_index when a new page is shown
             page = self.doc.load_page(index)  # Load the current page
             pix = page.get_pixmap()
-            img = QImage(pix.samples, pix.width, pix.height, pix.stride, QImage.Format_RGB888)
+            img = QImage(pix.samples, pix.width, pix.height, pix.stride, QImage.Format.Format_RGB888)
             pixmap = QPixmap.fromImage(img)
             self.label.setPixmap(pixmap)
             self.label.adjustSize()
