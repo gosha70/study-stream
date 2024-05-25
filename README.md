@@ -62,8 +62,22 @@ The database is automatically created and populated on the firth application run
 <img width="730" alt="image" src="https://github.com/gosha70/study-stream/assets/17832712/fff027bb-0f19-47d9-9961-4a5e661deca8">
 
 
-### Current UI
+### Application Configuration
+The `Study Stream Settings` dialog allows a user to customize the application presenation and configure optional feature.
+<img width="601" alt="image" src="https://github.com/gosha70/study-stream/assets/17832712/2ed0fc8b-c987-4f6e-963f-e9a6319a18ec">
 
-<img width="1376" alt="image" src="https://github.com/gosha70/study-stream/assets/17832712/d2b616cc-b702-425c-b472-c01992c79dac">
+- Set the location for local Large Language Model
+- Enable Open AI to be used as an additional assistor for the local RAG
+- Switch the color scheme:
+  - Light mode:
+    <img width="1728" alt="image" src="https://github.com/gosha70/study-stream/assets/17832712/d602ca83-d217-4225-9d8f-facc55cffbe7">
+
+  - Dark mode:
+    <img width="1728" alt="image" src="https://github.com/gosha70/study-stream/assets/17832712/791f14df-733d-4b09-b203-323740821101">
+
+  - Turquoise
+    <img width="1724" alt="image" src="https://github.com/gosha70/study-stream/assets/17832712/36c275b2-2e12-4e56-a189-d5be1757cbda">
+- Change the connection to the local database 
+
 
 
