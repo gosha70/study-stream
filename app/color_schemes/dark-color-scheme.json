@@ -1,21 +1,42 @@
 {
+    "main_window": {
+        "toolbar-css": "background-color: #333; color: #CCC; border: none;",
+        "icon-css": "border: none;",       
+        "main-css": "background-color: #222; color: #FFF;" 
+    },
     "left_panel": {
-        "toolbar-css": "background-color: #BBB; color: #555; border-style: none;",
-        "main-css": "background-color: #999; color: #FF9922;" 
+        "toolbar-css": "background-color: #444; color: #BBB; border-style: none;",
+        "main-css": "background-color: #333; color: #FFF;" ,
+        "selected-css": "color: #FF9922;",
+        "hover-css": "background-color: #555; color: #FFF;"
     },
     "center_panel": {
-        "toolbar-css": "background-color: #99999; color: #050505;",
-        "main-css": "background-color: #050505; color: #DDD;" 
+        "toolbar-css": "background-color: #555; color: #FFF;",
+        "main-css": "background-color: #333; color: #FFF;", 
+        "button-css": "height: 25px; font-weight: normal; background-color: #444; color: #FFF; border: 2px solid #DD9955; border-radius: 15px; padding: 10px;", 
+        "button-hover-css": "font-weight: bold; background-color: #EEE; color: #555; border: 3px solid #884e0c; border-radius: 15px; padding: 15px;",
+        "button-pressed-css": "font-weight: bold; background-color: #333; color: #DDD; border: none;"       
+    },
+    "settings-css": {
+        "main-css": "background-color: #222; color: #FFF;",
+        "icon-css": "border: none;", 
+        "label-css": "border: none; color: #FFF;", 
+        "control-css": "background-color: #444; color: #FFF; border-radius: 10px; padding: 5px;", 
+        "button-css": "height: 20px; font-weight: normal; background-color: #444; color: #FF9922; border: 4px solid #FF9922; border-radius: 15px; padding: 15px;",
+        "button-hover-css": "font-weight: bold; background-color: #EEE; color: #555; border: 3px solid #884e0c; border-radius: 15px; padding: 15px;",
+        "button-pressed-css": "font-weight: bold; background-color: #FF9922; color: #AAA; border: none;",
+        "card-css": "text-align: left; border: 3px solid #555; border-radius: 20px; padding: 10px; background-color: #777; color: #FFF;",
+        "card-grid-css": "background-color: #444;"
     },
     "right_panel": {
-        "toolbar-css": "background-color: #FFF; color: orange;",
-        "main-css": "background-color: #555; color: #AAA;",
+        "toolbar-css": "background-color: #EEE; color: #FFF;",
+        "main-css": "background-color: #333; color: #FFF;",
         "chat-icon-css": "border: none; border-radius: 24px;",
-        "chat-text-css": "border: 2px solid #ccc; border-radius: 20px; padding: 10px; background-color: #444; color: white;",
+        "chat-text-css": "border: 4px solid #DD9955; border-radius: 20px; padding: 10px; background-color: #08384b; color: #FFF;",
         "datetime-css": "color: #AAA; font-style: italic;",
         "datetime-user-css": "margin-right: 100px; color: #AAA; font-style: italic;",
-        "user-message-css": "vertical-align: text-top; border: 2px solid #DD9955; border-radius: 15px; padding: 10px; margin-left: 10px; margin-right: 100px; background-color: #FFFDFD; color: black;",
+        "user-message-css": "vertical-align: text-top; border: 3px solid #DD9955; border-radius: 15px; padding: 10px; margin-left: 10px; margin-right: 100px; background-color: #3F3F46; color: #FFF;",
         "ai-icon-css": "border: none; border-radius: 24px; margin-left: 90px;",
-        "ai-message-css": "vertical-align: text-top;; border: 2px solid #9955DD; border-radius: 15px; padding: 10px; margin-left: 100px; background-color: #FDFDFF; color: black;"
+        "ai-message-css": "vertical-align: text-top; border: 4px solid #05668D; border-radius: 15px; padding: 10px; margin-left: 100px; background-color: #EAEAEA; color: #111;"
     }       
 }

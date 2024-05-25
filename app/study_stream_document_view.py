@@ -36,12 +36,39 @@ class StudyStreamDocumentView(QWidget):
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         central_panel.addWidget(self.label)
 
+        button_css = self.color_scheme["button-css"]
+        button_hover_css = self.color_scheme['button-hover-css']
+        button_pressed_css = self.color_scheme['button-pressed-css']
+
         self.btn_prev = QPushButton('Previous Page')
         self.btn_prev.clicked.connect(self.prevPage)
+        self.btn_prev.setStyleSheet(f"""
+            QPushButton {{
+                {button_css} 
+            }}
+            QPushButton:hover {{
+                {button_hover_css}   
+            }}
+            QPushButton:pressed {{
+                {button_pressed_css}
+            }}
+        """)
         central_panel.addWidget(self.btn_prev)
+
 
         self.btn_next = QPushButton('Next Page')
         self.btn_next.clicked.connect(self.nextPage)
+        self.btn_next.setStyleSheet(f"""
+            QPushButton {{
+                {button_css} 
+            }}
+            QPushButton:hover {{
+                {button_hover_css}   
+            }}
+            QPushButton:pressed {{
+                {button_pressed_css}
+            }}
+        """)
         central_panel.addWidget(self.btn_next)
    
     def show_content(self, item):

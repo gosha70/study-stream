@@ -42,11 +42,18 @@ install_postgresql_linux() {
     sudo systemctl enable postgresql
 }
 
-# Generate the .env file
+# Generate the .env file in the profiles directory
 generate_env_file() {
     echo "Generating .env file..."
 
-    cat <<EOF > .env
+    # Ensure the profiles directory exists
+    mkdir -p profiles
+
+    cat <<EOF > profiles/.env
+LLM_FOLDER=llm_models    
+COLOR_SCHEME=dark 
+OPEN_AI_ENABLED=false
+OPEN_AI_KEY=   
 DB_NAME=study_stream_db
 DB_USER=study_stream_db_admin
 DB_PASSWORD=study_stream_db_psw
@@ -54,7 +61,7 @@ DB_HOST=localhost
 DB_PORT=5432
 EOF
 
-    echo ".env file created with database settings."
+    echo ".env file created with database settings in profiles directory."
 }
 
 # Check the operating system and install PostgreSQL accordingly
@@ -68,18 +75,18 @@ else
     exit 1
 fi
 
-# Set environment variables for PostgreSQL from .env file
-if [ -f .env ]; then
-    export $(grep -v '^#' .env | xargs)
+# Set environment variables for PostgreSQL from profiles/.env file
+if [ -f profiles/.env ]; then
+    export $(grep -v '^#' profiles/.env | xargs)
 else
     echo ".env file not found. Generating a new one."
     generate_env_file
-    export $(grep -v '^#' .env | xargs)
+    export $(grep -v '^#' profiles/.env | xargs)
 fi
 
 # Ensure environment variables are set
 if [ -z "$DB_NAME" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ] || [ -z "$DB_HOST" ] || [ -z "$DB_PORT" ]; then
-    echo "One or more environment variables are not set. Please check the .env file."
+    echo "One or more environment variables are not set. Please check the profiles/.env file."
     exit 1
 fi
 

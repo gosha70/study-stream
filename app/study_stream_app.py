@@ -10,7 +10,8 @@ import logging
 import json
 from retrieval_constants import CURRENT_DIRECTORY
 
-from PySide6.QtWidgets import (QApplication, QMainWindow)
+from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QSizePolicy, QToolBar)
+from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import Qt
 
 from models.model_info import ModelInfo
@@ -23,8 +24,8 @@ from .study_stream_directory_panel import StudyStreamDirectoryPanel
 from .study_stream_document_view import StudyStreamDocumentView
 from .study_stream_error import StudyStreamException
 from .study_stream_assistor_panel import StudyStreamAssistorPanel
+from .study_stream_settings import StudyStreamSettings
 from db.study_stream_dao import check_study_stream_database
-
 
 class StudyStreamApp(QMainWindow):
     def __init__(self, arguments, logging):
@@ -33,11 +34,18 @@ class StudyStreamApp(QMainWindow):
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
         self.current_dir = os.getcwd()
         with open(self.current_dir + '/app_config.json', 'r') as file:
-            self.app_config = json.load(file)  
-        with open(self.current_dir + '/color_schemes/dark-color-scheme.json', 'r') as file:
-            self.color_scheme = json.load(file)  
+            self.app_config = json.load(file)          
         self.verbose=arguments.verbose
-        self.logging = logging        
+        self.logging = logging      
+        self.settings_dialog = StudyStreamSettings(
+            self, 
+            app_config=self.app_config, 
+            current_dir=self.current_dir,
+            logging=self.logging  
+        )
+        print(self.settings_dialog.color_scheme)
+        self.main_color_scheme = self.settings_dialog.get_color_scheme()['main_window']  
+
         self.start_model(args=arguments)
 
         self.initUI()
@@ -76,23 +84,32 @@ class StudyStreamApp(QMainWindow):
     def initUI(self):
         self.setWindowTitle("Study Stream")
         self.showMaximized()
+        self.setStyleSheet(self.main_color_scheme["main-css"])
 
+        # Set up central widget and layout
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+        self.layout = QVBoxLayout(self.central_widget)
+
+        # Create toolbar
+        self.create_toolbar()        
+       
         # Central Panel: Display PDF
         self.central_panel = StudyStreamDocumentView(
             parent=self, 
             app_config=self.app_config, 
-            color_scheme=self.color_scheme["center_panel"],
+            color_scheme=self.settings_dialog.get_color_scheme()["center_panel"],
             asserts_path=self.current_dir,
             verbose=self.verbose,
             logging=self.logging
-        )
+        )    
 
         # Left Panel: Toolbar and List of PDFs
         self.left_panel = StudyStreamDirectoryPanel(
             parent=self, 
             document_view=self.central_panel,
             app_config=self.app_config, 
-            color_scheme=self.color_scheme["left_panel"],
+            color_scheme=self.settings_dialog.get_color_scheme()["left_panel"],
             asserts_path=self.current_dir,
             db=self.docs_db,
             logging=self.logging
@@ -103,17 +120,40 @@ class StudyStreamApp(QMainWindow):
             parent=self, 
             system_prompt=self.prompt_info,
             app_config=self.app_config, 
-            color_scheme=self.color_scheme["right_panel"],
+            color_scheme=self.settings_dialog.get_color_scheme()["right_panel"],
             asserts_path=self.current_dir,
             db=self.docs_db,
             model_info=self.model_info, 
             verbose=self.verbose,
             logging=self.logging
         )
-       
+
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.left_panel)
         self.setCentralWidget(self.central_panel)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.right_panel)
+
+    def create_toolbar(self):
+        self.toolbar = QToolBar("Main Toolbar")
+        self.addToolBar(self.toolbar)
+        self.toolbar.setStyleSheet(self.main_color_scheme['toolbar-css'])
+
+        # Add spacer to push actions to the right
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.toolbar.addWidget(spacer)
+
+        # Add actions to the toolbar
+        icon_path = self.current_dir + self.app_config['settings_icon']
+        settings_icon = QIcon(icon_path)
+        settings_action = QAction(settings_icon, "Settings", self)
+        settings_action.triggered.connect(self.show_settings)
+        self.toolbar.addAction(settings_action)
+
+    def show_settings(self):
+        self.settings_dialog.refresh_settings()
+        self.settings_dialog.show()
+        self.settings_dialog.raise_()
+        self.settings_dialog.activateWindow()
 
     def show(self):
         super().show() 
@@ -167,7 +207,6 @@ def install_and_configure_postgresql(logging):
         logging.error(f"Does not support the database installation for {os_type}")
         raise Exception(f"Unsupported OS: {os_type}")
 
-
 if __name__ == '__main__':
     # Set the logging level to INFO    
     logging.basicConfig(
@@ -179,8 +218,12 @@ if __name__ == '__main__':
     # Parse the arguments
     args = process_arguments()
     verbose = args.verbose  
-    #install_and_configure_postgresql(logging) 
+
+    install_and_configure_postgresql(logging) 
+
     check_study_stream_database(logging)
+
+    StudyStreamSettings.load_profile() 
 
     try:
         app = QApplication(sys.argv)

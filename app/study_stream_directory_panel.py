@@ -3,7 +3,7 @@
 from typing import List
 
 from PySide6.QtCore import QObject, Qt, QTimer
-from PySide6.QtWidgets import (QDockWidget, QFileDialog, QToolBar, QWidget,
+from PySide6.QtWidgets import (QDockWidget, QFileDialog, QToolBar, QWidget, 
                              QTreeWidget, QTreeWidgetItem, QMenu, QVBoxLayout, QMessageBox)
 from PySide6.QtGui import QIcon, QPixmap, QAction
 
@@ -99,7 +99,21 @@ class StudyStreamDirectoryPanel(QDockWidget):
         # Tree Widget for displaying folders and files
         self.class_tree = QTreeWidget()
         self.class_tree.setHeaderHidden(True)
-        self.class_tree.setStyleSheet(self.color_scheme["main-css"])
+        self.class_tree.setStyleSheet(f"""
+            QTreeWidget {{
+                {self.color_scheme["main-css"]}                                 
+            }}  
+            QTreeWidget::item {{
+                {self.color_scheme["main-css"]}    
+            }}                                                  
+            QTreeWidget::item:selected {{
+                {self.color_scheme["selected-css"]}
+            }}
+            QTreeWidget::item:hover {{
+                 {self.color_scheme["hover-css"]}
+            }}
+        """)
+
         self.class_tree.itemSelectionChanged.connect(self.handle_selection_changed)       
         self.class_tree.itemChanged.connect(self.on_item_changed) 
         self.class_tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -118,6 +132,7 @@ class StudyStreamDirectoryPanel(QDockWidget):
             self.selected_file = None
             self.selected_folder = None    
             self.selected_school = None  
+            self.class_tree.clear()
             self.class_tree.clearSelection()
             self.class_tree.setCurrentItem(None) 
             self.load_study_stream_schema()            

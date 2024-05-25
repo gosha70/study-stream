@@ -61,6 +61,7 @@ class StudyStreamAssistorPanel(QDockWidget):
 
         # Input area
         input_area = QWidget()
+        input_area.setStyleSheet(self.color_scheme['toolbar-css'])
         input_area_layout = QHBoxLayout(input_area)
         input_area_layout.setContentsMargins(10, 10, 10, 10)
         input_area_layout.setSpacing(10)
@@ -191,6 +192,6 @@ class StudyStreamAssistorPanel(QDockWidget):
     def scroll_to_bottom(self, widget_height: int):
         # Scroll the vertical scrollbar to the maximum position
         self.scroll_area.verticalScrollBar().setValue(
-            self.scroll_area.verticalScrollBar().maximum() + widget_height
+            self.scroll_area.verticalScrollBar().maximum() + widget_height + 50
         )
         self.scroll_area.show()
