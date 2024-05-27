@@ -34,7 +34,7 @@ class StudyStreamAssistorPanel(QDockWidget):
     def create_assistor(self):
         dic = self.docs_db.get()["ids"]
         documents_count = len(dic)
-        self.logging.info(f"\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\nLoaded the vectorstore with {documents_count} documents.\nLLM model name: {self.model_info.model_name}.\nSystem Prompt:\n---\n{self.system_prompt}\n---\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")  
+        self.logging.info(f"\n>>>>>>>>>>>>>\nLoaded the vectorstore with {documents_count} documents.\nLLM model name: {self.model_info.model_name}.\nSystem Prompt:\n---\n{self.system_prompt}\n---\n<<<<<<<<<<<<")  
         self.qa_service = create_retrieval_qa(model_info=self.model_info, prompt_info=self.system_prompt, vectorstore=self.docs_db)
         if self.qa_service is None:
             raise StudyStreamException(f"Failed to initialize the retrieval framework for the vectorstore: {self.docs_db}.")      

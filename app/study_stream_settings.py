@@ -50,7 +50,7 @@ class StudyStreamSettings(QDialog):
         self.button_hover_css = self.main_color_scheme['button-hover-css']
         self.button_pressed_css = self.main_color_scheme['button-pressed-css']
 
-        self.control_css = self.main_color_scheme['control-css']
+        self.control_css = self.main_color_scheme['control-css']        
         self.label_css = self.main_color_scheme['label-css']
 
         top_layout = QGridLayout()      
@@ -166,6 +166,10 @@ class StudyStreamSettings(QDialog):
         db_settings = QWidget()
         db_settings.setStyleSheet(self.main_color_scheme['card-css'])
 
+        self.toggle_layout = QVBoxLayout()
+        self.toggle_layout.setSpacing(0)
+        self.toggle_layout.setContentsMargins(0, 0, 0, 0)
+
         self.right_icon = QIcon(self.current_dir + self.app_config['right-arrow-icon']) 
         self.down_icon = QIcon(self.current_dir + self.app_config['down-arrow-icon']) 
 
@@ -174,17 +178,14 @@ class StudyStreamSettings(QDialog):
         self.toggle_button.setCheckable(True)
         self.toggle_button.setChecked(False)
         self.toggle_button.clicked.connect(self.on_toggle)
+        self.toggle_layout.addWidget(self.toggle_button)
 
         self.content_area = QFrame()
         self.content_area.setStyleSheet(self.main_color_scheme['card-grid-css'])
         self.content_area.setVisible(False)
+        self.toggle_layout.addWidget(self.content_area)
 
-        toggle_layout = QVBoxLayout()
-        toggle_layout.setSpacing(0)
-        toggle_layout.setContentsMargins(0, 0, 0, 0)
-        toggle_layout.addWidget(self.toggle_button)
-        toggle_layout.addWidget(self.content_area)
-        db_settings.setLayout(toggle_layout)
+        db_settings.setLayout(self.toggle_layout)
 
         db_layout = QGridLayout()
 
@@ -254,14 +255,24 @@ class StudyStreamSettings(QDialog):
         else:
             self.toggle_button.setIcon(self.right_icon)
         self.content_area.setVisible(checked)
+        self.toggle_layout.activate()
+        # Store the current width
+        current_width = self.width()        
+        # Adjust the size of the dialog based on its content
+        self.adjustSize()        
+        # Restore the width
+        self.setFixedWidth(current_width)
 
     def close_settings(self):
         self.logging.info("Closing Settings Dialog")
         self.close()
 
     def apply_settings(self): 
+        self.logging.info("Updating application settings ...")
         self.update_llm_folder()
         self.update_simple_properties()
+        self.update_database()
+        self.close()
 
     def update_database(self):
         new_db_name = self.db_name.text()
@@ -269,8 +280,9 @@ class StudyStreamSettings(QDialog):
         new_db_password = self.db_psw.text()
         new_db_host = self.db_host.text()
         new_db_port = self.db_port.text()
-        if new_db_name !=  self.orig_db_name or new_db_user != self.orig_db_user or new_db_password != self.orig_db_psw or new_db_host != self.orig_db_host or new_db_port != self.new_db_port:
+        if new_db_name !=  self.orig_db_name or new_db_user != self.orig_db_user or new_db_password != self.orig_db_psw or new_db_host != self.orig_db_host or new_db_port != self.orig_db_port:
             # Check new database settings
+            self.logging.info(f"Updating Database settings: (DB_NAME='{new_db_name}'; DB_USER='{new_db_user}'; DB_PASSWORD='{new_db_password}'; DB_HOST='{new_db_host}'; DB_PORT={new_db_port};")
             try:
                 conn = get_db_connection(dbname=new_db_name, user=new_db_user, password=new_db_password, host=new_db_host, port=new_db_port)
                 conn.close()

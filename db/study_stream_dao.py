@@ -155,6 +155,18 @@ def check_study_stream_database(logging):
     
     conn.close()
 
+def get_school_with_subjects(school_id):
+    print(f"DB Fetch for School: {school_id}")
+    try:
+        with get_session() as session:
+            school = session.query(StudyStreamSchool).options(joinedload(StudyStreamSchool.subjects)).filter_by(id=school_id).first()  
+            process_school(session,school) 
+            return school  
+    except Exception as e:
+        print("An error occurred while fetching schools with related data.")
+        print(traceback.format_exc())
+    return []          
+
 def fetch_all_schools_with_related_data()-> List[StudyStreamSchool]:
     try:
         with get_session() as session:
@@ -164,28 +176,31 @@ def fetch_all_schools_with_related_data()-> List[StudyStreamSchool]:
                 )
             ).all()
             for school in schools:
-                print(f"DB Fetch for School: {school.name}, Type: {school.school_type}")
-                messages = fetch_messages(session, StudyStreamMessageLinkType.SCHOOL.value, school.id)
-                if len(messages) > 0:
-                    school.messages = messages
-                for subject in school.subjects:
-                    print(f"DB Fetch for Subject: {subject.class_name}")
-                    messages = fetch_messages(session, StudyStreamMessageLinkType.SUBJECT.value, subject.id)
-                    if len(messages) > 0:
-                        subject.messages = messages
-                    for document in subject.documents:
-                        print(f"DB Fetch for Document: {document.name}, File Path: {document.file_path}, Status: {document.status}")
-                        messages = fetch_messages(session, StudyStreamMessageLinkType.DOCUMENT.value, document.id)
-                        if len(messages) > 0:
-                            document.messages = messages
-                        session.expunge(document)                      
-                    session.expunge(subject)                       
-                session.expunge(school)              
+                process_school(session,school)     
         return schools                    
     except Exception as e:
         print("An error occurred while fetching schools with related data.")
         print(traceback.format_exc())
-    return []                              
+    return []     
+
+def process_school(session, school: StudyStreamSchool):
+    print(f"DB Fetch for School: {school.name}, Type: {school.school_type}")
+    messages = fetch_messages(session, StudyStreamMessageLinkType.SCHOOL.value, school.id)
+    if len(messages) > 0:
+        school.messages = messages
+    for subject in school.subjects:
+        print(f"DB Fetch for Subject: {subject.class_name}")
+        messages = fetch_messages(session, StudyStreamMessageLinkType.SUBJECT.value, subject.id)
+        if len(messages) > 0:
+            subject.messages = messages
+        for document in subject.documents:
+            print(f"DB Fetch for Document: {document.name}, File Path: {document.file_path}, Status: {document.status}")
+            messages = fetch_messages(session, StudyStreamMessageLinkType.DOCUMENT.value, document.id)
+            if len(messages) > 0:
+                document.messages = messages
+            session.expunge(document)                      
+        session.expunge(subject)                       
+    session.expunge(school) 
 
 def fetch_messages(session, entity_type, entity_id)-> List[StudyStreamMessage]:
     try:

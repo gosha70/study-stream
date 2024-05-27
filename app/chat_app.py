@@ -402,7 +402,7 @@ if __name__ == '__main__':
     else:
         dic = docs_db.get()["ids"]
         documents_count = len(dic)
-        logging.info(f"\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\nLoaded the vectorstore with {documents_count} documents.\nLLM model name: {model_info.model_name}.\nSystem Prompt:\n---\n{app_system_prompt}\n---\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")  
+        logging.info(f"\n>>>>>>>>>>>\nLoaded the vectorstore with {documents_count} documents.\nLLM model name: {model_info.model_name}.\nSystem Prompt:\n---\n{app_system_prompt}\n---\n<<<<<<<<<<<<")  
         qa_service = create_retrieval_qa(model_info=model_info, prompt_info=prompt_info, vectorstore=docs_db)
         if qa_service is None:
             logging.error(f"Failed to initialize the retrieval framework for the vectorstore located in {args.persist_directory}.")  

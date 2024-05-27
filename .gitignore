@@ -3,3 +3,4 @@ __pycache__/
 model_cache/*
 .env
 chroma.sqlite3
+app/model_cache/*

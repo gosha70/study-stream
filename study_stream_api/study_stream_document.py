@@ -37,14 +37,13 @@ class StudyStreamDocument(Base):
         self.creation_date = datetime.now(tz=pytz.utc)
         self.in_progress_date = None
         self.processed_date = None
-
      
     @property
     def status_enum(self):
         return StudyStreamDocumentStatus(self.status)
 
     @status_enum.setter
-    def status_enum(self, value):
+    def status_enum(self, value: StudyStreamDocumentStatus):
         self.status = value.value
         if self.status == StudyStreamDocumentStatus.IN_PROGRESS:
             self.in_progress_date = datetime.now()
@@ -53,10 +52,10 @@ class StudyStreamDocument(Base):
     
     @property
     def file_type_enum(self):
-        return FileType.from_int(self.type)
+        return FileType.from_int(self.file_type)
 
     @file_type_enum.setter
-    def file_type_enum(self, value):
+    def file_type_enum(self, value: FileType):
         self.file_type = value.int_value  
     
     def add_message(self, session, message: StudyStreamMessage):

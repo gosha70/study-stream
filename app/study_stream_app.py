@@ -20,8 +20,8 @@ from embeddings.embedding_database import load_vector_store
 from embeddings.unstructured.document_splitter import DocumentSplitter
 
 from prompt_info import PromptInfo
-from .study_stream_directory_panel import StudyStreamDirectoryPanel
 from .study_stream_document_view import StudyStreamDocumentView
+from .study_stream_directory_panel import StudyStreamDirectoryPanel
 from .study_stream_error import StudyStreamException
 from .study_stream_assistor_panel import StudyStreamAssistorPanel
 from .study_stream_settings import StudyStreamSettings
@@ -42,10 +42,9 @@ class StudyStreamApp(QMainWindow):
             app_config=self.app_config, 
             current_dir=self.current_dir,
             logging=self.logging  
-        )
+        ) 
         print(self.settings_dialog.color_scheme)
         self.main_color_scheme = self.settings_dialog.get_color_scheme()['main_window']  
-
         self.start_model(args=arguments)
 
         self.initUI()
@@ -92,13 +91,13 @@ class StudyStreamApp(QMainWindow):
         self.layout = QVBoxLayout(self.central_widget)
 
         # Create toolbar
-        self.create_toolbar()        
+        self.create_toolbar() 
        
         # Central Panel: Display PDF
         self.central_panel = StudyStreamDocumentView(
             parent=self, 
             app_config=self.app_config, 
-            color_scheme=self.settings_dialog.get_color_scheme()["center_panel"],
+            main_color_scheme=self.settings_dialog.get_color_scheme(),
             asserts_path=self.current_dir,
             verbose=self.verbose,
             logging=self.logging

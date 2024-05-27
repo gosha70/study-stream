@@ -36,13 +36,6 @@ class StudyStreamSubject(Base):
     def add_document(self, document: StudyStreamDocument):
         self.documents.append(document)
 
-    @property
-    def sub_classes(self) -> List['StudyStreamSubject']:
-        return self.sub_classes
-
-    def add_sub_class(self, sub_class: 'StudyStreamSubject'):
-        self.sub_classes.append(sub_class)
-
     # CRUD operations
     @staticmethod
     def create(session, subject):

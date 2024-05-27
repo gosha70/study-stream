@@ -5,4 +5,4 @@ class StudyStreamException(Exception):
     """Exception raised in Study Stream Application."""
     def __init__(self, message):
         self.message = message
-        super().__init__(f"{message}: {value}")
+        super().__init__(f"{message}")

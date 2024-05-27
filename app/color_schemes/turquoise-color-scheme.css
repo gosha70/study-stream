@@ -18,7 +18,7 @@ body {
 }
 
 .container-style {
-    background-color: #9955DD; /* Light turquoise background */
+    background-color: #054952; /* Light turquoise background */
 }
 
 .chat-datetime {
@@ -38,24 +38,24 @@ body {
 
 .system-bubble {
     background-color: #80CBC4; /* Medium turquoise for system messages */
-    color: #e4f2f4; /* Deep turquoise for text */
+    color: #2abed2; /* Deep turquoise for text */
 }
 
 /* Customizing code text within markdown */
 .chat-message.system-message code {
-    color: #0b313f; /* Slightly darker turquoise for code */
+    color: #61f5e6; /* Slightly darker turquoise for code */
 }
 
 .system-error-message {
-    color: #f8daa1; /* Soft red for error messages, providing contrast */
+    color: #e28c1c; /* Soft red for error messages, providing contrast */
 }
 
 .chat-top-hr {
-    background-color: #4FBDBA; /* Turquoise for top horizontal rule */
+    background-color: #a8f5eb; /* Turquoise for top horizontal rule */
 }
 
 .chat-bottom-hr {
-    background-color: #028090; /* Slightly darker turquoise for bottom horizontal rule */
+    background-color: #805309 /* Slightly darker turquoise for bottom horizontal rule */
 }
 
 .custom-footer-style {

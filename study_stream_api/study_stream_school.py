@@ -22,10 +22,10 @@ class StudyStreamSchool(Base):
     start_date = Column(TIMESTAMP, nullable=False, default=datetime.now)
     finish_date = Column(TIMESTAMP)
 
-    subjects = relationship('StudyStreamSubject', backref='school', cascade='all, delete-orphan')
+    subjects = relationship('StudyStreamSubject', backref='school', cascade='all, delete-orphan', lazy='joined')  
 
-    def __init__(self, name: str, school_type: StudyStreamSchoolType):
-        self.name = name
+    def __init__(self, school_name: str, school_type: StudyStreamSchoolType):
+        self.name = school_name
         self.school_type = school_type.value  # Store the enum value
 
     @property

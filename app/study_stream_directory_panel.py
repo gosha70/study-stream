@@ -28,11 +28,19 @@ DEFAULT_CLASS_NAME = 'My Class'
 DEFAULT_SCHOOL_NAME = 'My School'
 
 class StudyStreamDirectoryPanel(QDockWidget):
-    def __init__(self, parent: QObject, document_view: StudyStreamDocumentView, app_config, color_scheme, asserts_path: str, db: Chroma, logging):
+    def __init__(self, 
+                 parent: QObject, 
+                 document_view: StudyStreamDocumentView, 
+                 app_config, 
+                 color_scheme, 
+                 asserts_path: str, 
+                 db: Chroma, 
+                 logging):
         super().__init__(parent=parent)
         self.parent = parent
         self.document_view = document_view
         self.logging = logging
+        self.object_view = document_view.get_object_view()
         self.asserts_path = asserts_path
         self.color_scheme = color_scheme
         self.app_config = app_config
@@ -45,6 +53,7 @@ class StudyStreamDirectoryPanel(QDockWidget):
         self.file_in_progress = None 
         self.file_task = None
         self.schools = []
+        self.displayed_target = None 
         self.initPanel()
         self.load_study_stream_schema()
 
@@ -112,6 +121,16 @@ class StudyStreamDirectoryPanel(QDockWidget):
             QTreeWidget::item:hover {{
                  {self.color_scheme["hover-css"]}
             }}
+            QTreeWidget::branch:has-children:!has-siblings:closed,
+            QTreeWidget::branch:closed:has-children:has-siblings {{
+                border-image: none;
+                image: url({self.asserts_path + self.app_config['right-arrow-icon']});
+            }}
+            QTreeWidget::branch:open:has-children:!has-siblings,
+            QTreeWidget::branch:open:has-children:has-siblings {{
+                border-image: none;
+                image: url({self.asserts_path + self.app_config['down-arrow-icon']});
+            }}            
         """)
 
         self.class_tree.itemSelectionChanged.connect(self.handle_selection_changed)       
@@ -145,16 +164,21 @@ class StudyStreamDirectoryPanel(QDockWidget):
                 class_node = self.add_class(subject_entity=subject, parent_node=school_node, with_select=False)
                 for document in subject.documents:
                     self.add_document(document_entity=document, parent_node=class_node, with_select=False)
-        if self.selected_school:
+        
+        if self.schools and len(self.schools) > 0:
+            self.selected_school = self.class_tree.topLevelItem(0)
+            self.class_tree.setCurrentItem(self.selected_school)
+            self.class_tree.expandItem(self.selected_school)   
+            self.select_school(tree_item=self.selected_school, school=self.selected_school.data(0, Qt.ItemDataRole.UserRole))
+        else:            
+            self.selected_school = None
             self.selected_folder = None
-            self.selected_file = None  
-            self.class_tree.editItem(self.selected_school, 0)  
-            self.class_tree.expandItem(self.selected_school)            
+            self.selected_file = None    
 
     def on_item_expanded(self, item: QTreeWidgetItem):
         item_target = item.data(0, Qt.ItemDataRole.UserRole)
         if isinstance(item_target, StudyStreamSubject):
-            item.setIcon(0, self.folder_selected_icon)
+            item.setIcon(0, self.class_selected_icon)
             if self.selected_folder is None:
                 self.selected_folder = item
 
@@ -264,20 +288,21 @@ class StudyStreamDirectoryPanel(QDockWidget):
         )
         self.file_in_progress.setIcon(0, final_icon) 
     
-    def new_school(self):        
-        school_entity = StudyStreamSchool(class_name=DEFAULT_SCHOOL_NAME, type=StudyStreamSchoolType.COLLEGE) 
+    def new_school(self):
+        school_entity = StudyStreamSchool(school_name=DEFAULT_SCHOOL_NAME, school_type=StudyStreamSchoolType.COLLEGE) 
         school_entity = create_entity(school_entity)
-        self.add_school(subject_entity=school_entity)
+        self.add_school(school_entity)
 
     def add_school(self, school_entity: StudyStreamSchool)-> QTreeWidgetItem:        
         school_node = QTreeWidgetItem()
+        school_node.setChildIndicatorPolicy
         school_node.setText(0, school_entity.name)
         school_node.setIcon(0, self.school_icon) 
         school_node.setFlags(school_node.flags() | Qt.ItemFlag.ItemIsEditable)  # Make the item editable         
         school_node.setData(0, Qt.ItemDataRole.UserRole, school_entity)
         # School is always at the top level 
         self.class_tree.addTopLevelItem(school_node)  
-        self.selected_schoold = school_node    
+        self.selected_school = school_node    
         self.class_tree.editItem(school_node, 0)  # Optional
 
         return school_node
@@ -353,27 +378,32 @@ class StudyStreamDirectoryPanel(QDockWidget):
             print(current_item.text(0))
             item_target = current_item.data(0, Qt.ItemDataRole.UserRole)
             if isinstance(item_target, StudyStreamDocument): 
-                if self.selected_file == current_item:
-                    self.selected_file = None
-                else:                 
+                if item_target != self.displayed_target:                    
                     self.selected_file = current_item
-                    self.document_view.show_content(item=current_item)         
+                    self.document_view.show_content(item=current_item)    
+                    self.new_subject_action.setEnabled(False)  
+                    self.new_doc_action.setEnabled(False)   
+                    self.displayed_target = item_target   
+                    self.document_view.show_content(item=item_target)
+                    self.object_view.display_document(document=item_target) 
             elif isinstance(item_target, StudyStreamSubject):     
-                if self.selected_folder == current_item:
-                    self.selected_folder = None
-                    self.selected_file = None
-                    self.new_doc_action.setEnabled(False)
-                else:                 
-                    self.selected_folder = current_item    
-                    self.new_subject_action.setEnabled(True)  
-                    self.new_doc_action.setEnabled(True)  
-            elif isinstance(item_target, StudyStreamSchool):     
-                if self.selected_folder == current_item:
-                    self.selected_folder = None
-                    self.selected_file = None
+                if item_target != self.displayed_target:      
+                    self.selected_folder = current_item   
                     self.selected_school = None
-                    self.new_subject_action.setEnabled(False)
-                    self.new_doc_action.setEnabled(False)
-                else:                 
-                    self.selected_school = current_item
-                    self.new_subject_action.setEnabled(True)
+                    self.selected_file = None  
+                    self.new_subject_action.setEnabled(False)  
+                    self.new_doc_action.setEnabled(True)    
+                    self.displayed_target = item_target   
+                    self.object_view.display_class(subject=item_target)  
+            elif isinstance(item_target, StudyStreamSchool):     
+                if item_target != self.displayed_target:   
+                    self.select_school(tree_item=current_item, school=item_target)  
+    
+    def select_school(self, tree_item, school: StudyStreamSchool):
+        self.selected_school = tree_item
+        self.selected_folder = None
+        self.selected_file = None
+        self.new_subject_action.setEnabled(True)
+        self.new_doc_action.setEnabled(False) 
+        self.displayed_target = school 
+        self.object_view.display_school(school=school) 
