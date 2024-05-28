@@ -79,8 +79,8 @@ class StudyStreamDocument(Base):
         session.commit()
 
     @staticmethod
-    def delete(session, document_id):
-        document = session.query(StudyStreamDocument).filter_by(id=document_id).first()
+    def delete(session, object_id):
+        document = session.query(StudyStreamDocument).filter_by(id=object_id).first()
         if document:
             session.delete(document)
             session.commit()

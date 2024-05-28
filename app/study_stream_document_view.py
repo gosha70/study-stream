@@ -1,9 +1,9 @@
 # Copyright (c) EGOGE - All Rights Reserved.
 # This software may be used and distributed according to the terms of the Apache-2.0 license.
+from enum import Enum
 import fitz  # PyMuPDF
-
 from PySide6.QtCore import QObject, Qt
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QFileDialog, QListWidgetItem)
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QMessageBox, QPushButton, QLabel, QFileDialog, QListWidgetItem
 from PySide6.QtGui import QPixmap, QImage
 
 from langchain_community.vectorstores import Chroma
@@ -12,18 +12,11 @@ from study_stream_api.study_stream_subject import StudyStreamSubject
 from study_stream_api.study_stream_document import StudyStreamDocument
 from .study_stream_object_view import StudyStreamObjectView
 
+from embeddings.unstructured.file_type import FileType
+
 
 class StudyStreamDocumentView(QWidget):
-    def __init__(
-            self, 
-            parent: QObject, 
-            app_config, 
-            main_color_scheme, 
-            asserts_path: str, 
-            db: Chroma, 
-            load_chat_lambda,
-            verbose: bool, 
-            logging):
+    def __init__(self, parent: QObject, app_config, main_color_scheme, asserts_path: str, db: Chroma, load_chat_lambda, verbose: bool, logging):
         super().__init__()
         self.parent = parent
         self.logging = logging
@@ -33,33 +26,29 @@ class StudyStreamDocumentView(QWidget):
         self.color_scheme = main_color_scheme['center_panel']
         self.object_color_scheme = main_color_scheme['settings-css']
         self.app_config = app_config
-        self.verbose=verbose
+        self.verbose = verbose
         self.logging = logging 
         self.doc = None
         self.pdf_files = []
         self.page_index = 0
         self.initUI()
 
-    def get_object_view(self)-> StudyStreamObjectView:
+    def get_object_view(self) -> StudyStreamObjectView:
         return self.object_view  
         
     def initUI(self):
-        # Set a maximum height for the main widget
         self.setMaximumHeight(self.parent.height() - 50)
-
-        # Central Panel: Display PDF
         central_panel = QVBoxLayout(self)
 
         self.pdf_view = QLabel()
         self.pdf_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Top Collapsible Object View Panel
         self.object_view = StudyStreamObjectView(
             parent=self.parent, 
             dependent_object=self.pdf_view,
             app_config=self.app_config, 
             color_scheme=self.object_color_scheme, 
-            current_dir= self.asserts_path,
+            current_dir=self.asserts_path,
             db=self.docs_db,
             load_chat_lambda=self.load_chat_lambda,
             logging=self.logging
@@ -86,7 +75,6 @@ class StudyStreamDocumentView(QWidget):
         """)
         central_panel.addWidget(self.btn_prev)
 
-
         self.btn_next = QPushButton('Next Page')
         self.btn_next.clicked.connect(self.nextPage)
         self.btn_next.setStyleSheet(f"""
@@ -108,17 +96,31 @@ class StudyStreamDocumentView(QWidget):
         elif isinstance(item, StudyStreamDocument):  
             self.show_document(path=item.file_path)
 
-    def openPDF(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Open PDF", "", "PDF files (*.pdf);;All files (*)")
+    def openFile(self):
+        file_filter = "Supported files (*.csv *.ddl *.xlsx *.java *.js *.json *.html *.md *.pdf *.py *.rtf *.sql *.txt *.xml *.xsl *.yaml);;All files (*)"
+        path, _ = QFileDialog.getOpenFileName(self, "Open File", "", file_filter)
         self.show_document(path=path)
 
     def show_document(self, path: str):    
         if path:
-            self.doc = fitz.open(path)
-            print(f"Opened the document: {self.doc}")
-            self.pdf_files.append(path)
-            self.load_document()
-            self.showPage(0)
+            file_type_enum = FileType.from_str_by_extension(file_name=path)
+            if file_type_enum is None:
+                QMessageBox.warning(self, 'Unsupported File Type', 'The selected file type is not supported.')
+                return
+            
+            if file_type_enum == FileType.PDF:
+                self.doc = fitz.open(path)
+                self.pdf_files.append(path)
+                self.load_document()
+                self.showPage(0)
+            else:
+                self.show_text_document(path)
+                
+    def show_text_document(self, path: str):
+        with open(path, 'r') as file:
+            content = file.read()
+            self.pdf_view.setText(content)
+            self.pdf_view.adjustSize()
 
     def load_document(self):
         for file in self.pdf_files:

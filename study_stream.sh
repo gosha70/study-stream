@@ -136,3 +136,5 @@ echo "DB_USER=$DB_USER"
 echo "DB_PASSWORD=$DB_PASSWORD"
 echo "DB_HOST=$DB_HOST"
 echo "DB_PORT=$DB_PORT"
+
+python -m app.study_stream_app

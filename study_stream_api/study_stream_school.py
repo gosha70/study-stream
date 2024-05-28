@@ -50,8 +50,8 @@ class StudyStreamSchool(Base):
         session.commit()
 
     @staticmethod
-    def delete(session, school_id):
-        school = session.query(StudyStreamSchool).filter_by(id=school_id).first()
+    def delete(session, object_id):
+        school = session.query(StudyStreamSchool).filter_by(id=object_id).first()
         if school:
             session.delete(school)
             session.commit()

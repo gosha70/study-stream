@@ -3,8 +3,6 @@
 import sys
 import traceback
 import os
-import platform
-import subprocess
 import logging
 import json
 from models.retrieval_constants import CURRENT_DIRECTORY
@@ -160,17 +158,6 @@ class StudyStreamApp(QMainWindow):
     def show(self):
         super().show() 
 
-def install_and_configure_postgresql(logging):
-    os_type = platform.system()    
-    if os_type in ["Darwin", "Linux"]:
-        logging.info(f"Setting up the database on {os_type} ...")
-        subprocess.run(["bash", "utils/db_setup_linux.sh"], check=True)
-    else:
-        # LATER: Support for Windows:
-        # subprocess.run(["cmd", "utils/db_setup_win.bat"], check=True)
-        logging.error(f"Does not support the database installation for {os_type}")
-        raise Exception(f"Unsupported OS: {os_type}")
-
 if __name__ == '__main__':
     # Set the logging level to INFO    
     logging.basicConfig(
@@ -178,8 +165,6 @@ if __name__ == '__main__':
         format='%(asctime)s - %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
-
-    install_and_configure_postgresql(logging) 
 
     # Set the working directory to the script's directory
     os.chdir(os.path.dirname(os.path.abspath(__file__)))

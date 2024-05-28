@@ -45,8 +45,8 @@ class StudyStreamSubject(Base):
         session.commit()
 
     @staticmethod
-    def delete(session, subject_id):
-        subject = session.query(StudyStreamSubject).filter_by(id=subject_id).first()
+    def delete(session, object_id):
+        subject = session.query(StudyStreamSubject).filter_by(id=object_id).first()
         if subject:
             session.delete(subject)
             session.commit()

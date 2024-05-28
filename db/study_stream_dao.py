@@ -225,6 +225,21 @@ def update_document(updated_document: StudyStreamDocument)-> StudyStreamDocument
         print(traceback.format_exc())
     return None  
 
+def delete_entity(entity)-> bool:
+    try:
+        with get_session() as session:
+            if isinstance(entity, StudyStreamDocument): 
+                StudyStreamDocument.delete(session=session, object_id=entity.id)
+            elif isinstance(entity, StudyStreamSubject):  
+                StudyStreamSubject.delete(session=session, object_id=entity.id)
+            elif isinstance(entity, StudyStreamSchool):    
+                StudyStreamSchool.delete(session=session, object_id=entity.id)
+            return True    
+    except Exception as e:
+        print(f"An error occurred while deleting object: {entity.id}.")
+        print(traceback.format_exc())     
+
+    return False       
 
 def update_class(updated_class: StudyStreamSubject)-> StudyStreamSubject:
     try:

@@ -131,9 +131,8 @@ def add_file_content_to_db(docs_db: Chroma, document_splitter: DocumentSplitter,
     - document_splitter (DocumentSplitter): the document splitter                     
     - file_name (str): the file name
     """
-    print(f"add_file_content_to_db: document_splitter - {file_name}")
+    logging.info(f"Creating unstructured Documents from '{file_name}'")
     documents = document_splitter.process_file(file_path=file_name)  
-    print(f"add_file_content_to_db: {documents}")
     if documents is not None:  
         logging.info(f"Updating the embedding vectorstore with {len(documents)} document splits ...")
         ids = docs_db.add_documents(documents=documents) 

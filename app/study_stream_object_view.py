@@ -9,7 +9,7 @@ from PySide6.QtCore import QObject, QSize, Qt, QDateTime, QTimer
 from langchain_community.vectorstores import Chroma
 from embeddings.unstructured.document_splitter import DocumentSplitter
 from embeddings.embedding_database import add_file_content_to_db
-from db.study_stream_dao import update_document, update_class, update_school
+from db.study_stream_dao import update_document, update_class, update_school, delete_entity
 from .study_stream_task import StudyStreamTaskWorker
 from .study_stream_message_type import StudyStreamMessageType
 from study_stream_api.study_stream_document import StudyStreamDocument
@@ -59,6 +59,7 @@ class StudyStreamObjectView(QWidget):
         self.file_in_progress = None 
         self.file_task = None
         self.on_save_item = None
+        self.on_delete_item = None
         self.initUI()
 
     def initUI(self):
@@ -155,8 +156,9 @@ class StudyStreamObjectView(QWidget):
             QPushButton:hover {{}}
             QPushButton:pressed {{}}
         """
-   
-        icon_size = QSize(64, 64)
+
+        button_size = self.color_scheme['button-icon-size']   
+        icon_size = QSize(button_size, button_size)
 
         button_layout = QHBoxLayout()
 
@@ -214,27 +216,34 @@ class StudyStreamObjectView(QWidget):
             if updated_doc:   
                 self.study_doc = updated_doc 
                 if self.on_save_item:
-                    self.on_save_item(name=self.study_doc.name, status=self.study_doc.status_enum)
+                    self.on_save_item(entity=self.study_doc)
         elif self.study_class:
             print(f"Saving Class: {self.study_class.class_name}")
-            self.study_class.class_name = self.title_button.text()
             updated_class = update_class(updated_class=self.study_class)
-            if updated_doc:   
+            if updated_class:   
                 self.study_class = updated_class 
                 if self.on_save_item:
-                    self.on_save_item(name=self.study_class.class_name, status=None)
+                    self.on_save_item(entity=self.study_class)
         elif self.study_school:
             print(f"Saving School: {self.study_school.name}")
             updated_school = update_school(updated_school=self.study_school)
             if updated_school:   
                 self.study_school = updated_school  
                 if self.on_save_item:
-                    self.on_save_item(name=self.study_school.name, status=None)            
+                    self.on_save_item(entity=self.study_school)            
         else:
             self.logging.warn(f"No item is available for save!!!")
             
     def delete_action(self):
-        pass       
+        if self.study_doc:
+            if delete_entity(entity=self.study_doc):
+                self.on_delete_item()
+        elif self.study_class:
+            if delete_entity(entity=self.study_class):
+                self.on_delete_item() 
+        elif self.study_school:
+            if delete_entity(entity=self.study_school):
+                self.on_delete_item() 
 
     def on_click(self):         
         checked = self.title_button.isChecked()
@@ -273,7 +282,8 @@ class StudyStreamObjectView(QWidget):
         else:
             self.llm_button.setVisible(False)
 
-    def display_school(self, school: StudyStreamSchool, on_save_item):
+    def display_school(self, school: StudyStreamSchool, on_save_item, on_delete_item):
+        self.on_delete_item = on_delete_item
         self.on_save_item = on_save_item
         self.reset_content()
         if school:
@@ -342,7 +352,8 @@ class StudyStreamObjectView(QWidget):
 
         return column_factor
 
-    def display_class(self, subject: StudyStreamSubject, on_save_item):
+    def display_class(self, subject: StudyStreamSubject, on_save_item, on_delete_item):
+        self.on_delete_item = on_delete_item
         self.on_save_item = on_save_item
         self.reset_content()
         if subject:
@@ -412,7 +423,8 @@ class StudyStreamObjectView(QWidget):
         
         return card
 
-    def display_document(self, document: StudyStreamDocument, on_save_item):
+    def display_document(self, document: StudyStreamDocument, on_save_item, on_delete_item):
+        self.on_delete_item = on_delete_item
         self.on_save_item = on_save_item
         self.reset_content()
         if document:
@@ -550,7 +562,7 @@ class StudyStreamObjectView(QWidget):
                 self.document_in_progress = updated_doc
                 self.async_task(document=self.document_in_progress) 
                 if self.on_save_item:
-                    self.on_save_item(name=updated_doc.name, status=updated_doc.status_enum)       
+                    self.on_save_item(entity=self.study_doc)       
         else:
             self.logging.error(f"Document '{self.study_doc}' has the state is not acceptable for the analysis !!!")
     
@@ -581,11 +593,10 @@ class StudyStreamObjectView(QWidget):
         updated_doc = update_document(updated_document=self.document_in_progress)
         if self.study_doc and self.study_doc.id == updated_doc.id:
             self.study_doc = updated_doc
+            if self.on_save_item:
+                self.on_save_item(entity=self.study_doc)
         self.document_in_progress = None                 
-        self.on_click()    
-        if self.on_save_item:
-            self.on_save_item(name=updated_doc.name, status=updated_doc.status_enum)
-
+        self.on_click() 
 
     def rotate_icon(self):    
         new_icon, self.rotate_icon_angle = StudyStreamMessageType.rotate_icon(

@@ -2,9 +2,9 @@
 # This software may be used and distributed according to the terms of the Apache-2.0 license.
 from typing import List
 
-from PySide6.QtCore import QObject, Qt
+from PySide6.QtCore import QObject, Qt, QSize
 from PySide6.QtWidgets import (QDockWidget, QFileDialog, QToolBar, QWidget, 
-                             QTreeWidget, QTreeWidgetItem, QMenu, QVBoxLayout, QMessageBox)
+                             QTreeWidget, QTreeWidgetItem, QVBoxLayout, QMessageBox)
 from PySide6.QtGui import QIcon, QPixmap, QAction
 
 from .study_stream_document_view import StudyStreamDocumentView
@@ -67,15 +67,17 @@ class StudyStreamDirectoryPanel(QDockWidget):
 
         # Left Panel: Toolbar and List of PDFs
         toolbar = QToolBar("My Study")
+        button_size = self.color_scheme['button-icon-size']   
+        toolbar.setIconSize(QSize(button_size, button_size))
 
         # Add a new school
         school_action = QAction(QIcon(self.get_image_path("new_school_icon")), 'New School', self.parent)
-        school_action.triggered.connect(self.new_school)  # You need to define this method
+        school_action.triggered.connect(self.new_school)  
         toolbar.addAction(school_action)
 
         # Add a new class
         self.new_subject_action = QAction(QIcon(self.get_image_path("new_class_icon")), 'New Class', self.parent)
-        self.new_subject_action.triggered.connect(self.new_class)  # You need to define this method
+        self.new_subject_action.triggered.connect(self.new_class) 
         toolbar.addAction(self.new_subject_action)
 
         # Add a new document
@@ -85,11 +87,10 @@ class StudyStreamDirectoryPanel(QDockWidget):
 
         # Add the refresh action
         refresh_action = QAction(QIcon(self.get_image_path("refresh_icon")), 'Refresh', self.parent)
-        refresh_action.triggered.connect(self.refresh)  # Currently a no-op
+        refresh_action.triggered.connect(self.refresh) 
         toolbar.addAction(refresh_action)
         
-        toolbar.setStyleSheet(self.color_scheme["toolbar-css"])            
-        # Add the toolbar to the layout
+        toolbar.setStyleSheet(self.color_scheme["toolbar-css"])  
         layout.addWidget(toolbar)    
 
         # Tree Widget for displaying folders and files
@@ -123,7 +124,6 @@ class StudyStreamDirectoryPanel(QDockWidget):
         self.class_tree.itemSelectionChanged.connect(self.handle_selection_changed)       
         self.class_tree.itemChanged.connect(self.on_item_changed) 
         self.class_tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.class_tree.customContextMenuRequested.connect(self.on_context_menu) 
         self.class_tree.itemExpanded.connect(self.on_item_expanded)
         self.class_tree.itemCollapsed.connect(self.on_item_collapsed)
         layout.addWidget(self.class_tree)    
@@ -134,29 +134,54 @@ class StudyStreamDirectoryPanel(QDockWidget):
     def refresh(self):
         reply = QMessageBox.question(self, "Refresh Directory", "Please confirm if you want to refresh the study directory !", QMessageBox.Ok | QMessageBox.Cancel)
         if reply == QMessageBox.Ok:
-            """Clear all selections in the tree widget."""
-            self.selected_file = None
-            self.selected_folder = None    
-            self.selected_school = None  
-            self.class_tree.clear()
-            self.class_tree.clearSelection()
-            self.class_tree.setCurrentItem(None) 
-            self.load_study_stream_schema() 
+            self.refresh_tree()
+
+    def refresh_tree(self):        
+        """Clear all selections in the tree widget."""
+        self.selected_file = None
+        self.selected_folder = None    
+        self.selected_school = None  
+        self.class_tree.clear()
+        self.class_tree.clearSelection()
+        self.class_tree.setCurrentItem(None) 
+        self.load_study_stream_schema() 
     
-    def on_save_item(self, name: str, status: StudyStreamDocumentStatus):
-        if self.selected_school:
-            self.selected_school.setText(0, name)
-        elif self.selected_folder:
-            self.selected_folder.setText(0, name)
-        elif self.selected_file:
-            self.selected_file.setText(0, name)  
-            if status:
-                if status == StudyStreamDocumentStatus.IN_PROGRESS:
-                    self.selected_file.setIcon(0, self.loading_icon)    
-                elif status == StudyStreamDocumentStatus.PROCESSED:
-                    self.selected_file.setIcon(0, self.active_file_icon) 
+    def on_save_item(self, entity):
+        changed_item = self.find_item_with_id(entity=entity)
+        if changed_item:
+            if isinstance(entity, StudyStreamDocument): 
+                changed_item.setText(0, entity.name)
+                if entity.status_enum == StudyStreamDocumentStatus.IN_PROGRESS:
+                    changed_item.setIcon(0, self.loading_icon)    
+                elif entity.status_enum == StudyStreamDocumentStatus.PROCESSED:
+                    changed_item.setIcon(0, self.active_file_icon) 
                 else:   
-                    self.selected_file.setIcon(0, self.inactive_file_icon)                 
+                    changed_item.setIcon(0, self.inactive_file_icon) 
+            elif isinstance(entity, StudyStreamSchool): 
+                changed_item.setText(0, entity.name)
+            elif isinstance(entity, StudyStreamSubject):  
+                changed_item.setText(0, entity.class_name)                  
+
+    def find_item_with_id(self, entity)-> QTreeWidgetItem:
+        def search_item(item):
+            # Retrieve the stored object from the item
+            item_target = item.data(0, Qt.ItemDataRole.UserRole)
+            if type(item_target) is type(entity) and item_target.id == entity.id:
+                return item
+            # Recursively search through the children
+            for i in range(item.childCount()):
+                result = search_item(item.child(i))
+                if result:
+                    return result
+            return None
+
+        # Iterate through the top-level items
+        for i in range(self.class_tree.topLevelItemCount()):
+            item = self.class_tree.topLevelItem(i)
+            result = search_item(item)
+            if result:
+                return result
+        return None                              
 
     def load_study_stream_schema(self)-> List[StudyStreamSchool]:
         self.schools = fetch_all_schools_with_related_data()
@@ -197,47 +222,6 @@ class StudyStreamDirectoryPanel(QDockWidget):
             item_target = item.data(0, Qt.ItemDataRole.UserRole)
             if isinstance(item_target, StudyStreamSubject):
                 item_target.class_name = DEFAULT_CLASS_NAME
-
-    def on_context_menu(self, point):
-        item = self.class_tree.itemAt(point)
-        if isinstance(item, QTreeWidgetItem):
-            self.class_tree.setCurrentItem(item)
-            menu = QMenu()
-            item_target = item.data(0, Qt.ItemDataRole.UserRole)
-            if isinstance(item_target, StudyStreamDocument) and self.file_in_progress is None:   
-                load_action = menu.addAction("Load")
-            else:    
-                load_action = None
-            rename_action = menu.addAction("Rename")
-            delete_action = menu.addAction("Delete")
-
-            action = menu.exec_(self.class_tree.viewport().mapToGlobal(point))
-            if action == rename_action:
-                self.handl_edit(item)   
-            elif action == delete_action:
-                self.handle_delete(item)   
-            elif load_action and action == load_action:     
-                self.process_document(item)       
-
-    def handle_delete(self, item: QTreeWidgetItem):
-        parent = item.parent()
-        if parent:
-            parent.removeChild(item)
-        else:
-            index = self.class_tree.indexOfTopLevelItem(item)
-            self.class_tree.takeTopLevelItem(index)
-    
-    def handl_edit(self, item: QTreeWidgetItem):
-        if item.flags() & Qt.ItemFlag.ItemIsEditable:
-            new_name = item.text(0)
-            item_target = item.data(0, Qt.ItemDataRole.UserRole)
-            if isinstance(item_target, StudyStreamDocument):
-                item_target.name = new_name
-            elif isinstance(item_target, StudyStreamSubject):
-                item_target.class_name = new_name
-                    
-            self.class_tree.editItem(item, 0)  # Only edit if the item is set to be editable
-
     
     def new_school(self):
         school_entity = StudyStreamSchool(school_name=DEFAULT_SCHOOL_NAME, school_type=StudyStreamSchoolType.COLLEGE) 
@@ -284,19 +268,28 @@ class StudyStreamDirectoryPanel(QDockWidget):
             self.class_tree.editItem(class_node, 0) 
 
         return class_node    
-        
+    
     def import_document(self):
         if self.selected_folder is None:
-            QMessageBox.warning(self, 'Blocked Creation', 'Does not support an orphan documents, a class must be selected first !!!')    
+            QMessageBox.warning(self, 'Blocked Creation', 'Does not support orphan documents, a class must be selected first !!!')
             return
-        path, _ = QFileDialog.getOpenFileName(self.parent, "Open PDF", "", "PDF files (*.pdf);;All files (*)")
+        
+        # Define file dialog filter for supported file types
+        file_filter = "Supported files (*.csv *.ddl *.xlsx *.java *.js *.json *.html *.md *.pdf *.py *.rtf *.sql *.txt *.xml *.xsl *.yaml);;All files (*)"
+        
+        path, _ = QFileDialog.getOpenFileName(self.parent, "Open File", "", file_filter)
         if path:
             doc_name = path.split('/')[-1]
+            file_type_enum = FileType.from_str_by_extension(file_name=doc_name) 
+            if file_type_enum is None:
+                QMessageBox.warning(self, 'Unsupported File Type', 'The selected file type is not supported.')
+                return
+            
             class_entity = self.selected_folder.data(0, Qt.ItemDataRole.UserRole)
             doc_entity = StudyStreamDocument(
                 name=doc_name, 
                 file_path=path, 
-                file_type_enum=FileType.PDF,
+                file_type_enum=file_type_enum,
                 status_enum=StudyStreamDocumentStatus.NEW
             )
             doc_entity.subject_id = class_entity.id
@@ -335,7 +328,7 @@ class StudyStreamDirectoryPanel(QDockWidget):
                     self.new_doc_action.setEnabled(False)   
                     self.displayed_target = item_target   
                     self.document_view.show_content(item=item_target)
-                    self.object_view.display_document(document=item_target, on_save_item=self.on_save_item) 
+                    self.object_view.display_document(document=item_target, on_save_item=self.on_save_item, on_delete_item=self.refresh_tree) 
             elif isinstance(item_target, StudyStreamSubject):     
                 if item_target != self.displayed_target:      
                     self.selected_folder = current_item   
@@ -344,7 +337,7 @@ class StudyStreamDirectoryPanel(QDockWidget):
                     self.new_subject_action.setEnabled(False)  
                     self.new_doc_action.setEnabled(True)    
                     self.displayed_target = item_target   
-                    self.object_view.display_class(subject=item_target, on_save_item=self.on_save_item)  
+                    self.object_view.display_class(subject=item_target, on_save_item=self.on_save_item, on_delete_item=self.refresh_tree)  
             elif isinstance(item_target, StudyStreamSchool):     
                 if item_target != self.displayed_target:   
                     self.select_school(tree_item=current_item, school=item_target)  
@@ -356,4 +349,4 @@ class StudyStreamDirectoryPanel(QDockWidget):
         self.new_subject_action.setEnabled(True)
         self.new_doc_action.setEnabled(False) 
         self.displayed_target = school 
-        self.object_view.display_school(school=school, on_save_item=self.on_save_item) 
+        self.object_view.display_school(school=school, on_save_item=self.on_save_item, on_delete_item=self.refresh_tree) 

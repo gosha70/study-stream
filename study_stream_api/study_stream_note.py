@@ -64,9 +64,8 @@ class StudyStreamNote(Base):
         session.commit()
 
     @staticmethod
-    def delete(session, note_id):
-        note = session.query(StudyStreamNote).filter_by(id=note_id).first()
+    def delete(session, object_id):
+        note = session.query(StudyStreamNote).filter_by(id=object_id).first()
         if note:
             session.delete(note)
             session.commit()
-            
