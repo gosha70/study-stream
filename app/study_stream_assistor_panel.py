@@ -1,18 +1,24 @@
 # Copyright (c) EGOGE - All Rights Reserved.
 # This software may be used and distributed according to the terms of the Apache-2.0 license.
 from PySide6.QtCore import QObject, Qt, QSize, QTimer
-from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget, QPushButton, QDockWidget, QHBoxLayout, QTextEdit
+from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget, QPushButton, QDockWidget, QHBoxLayout, QTextEdit
 from PySide6.QtGui import QIcon, QFont, QPixmap
 
 from langchain_community.vectorstores import Chroma
 
-from retrieval_qa import create_retrieval_qa
-from prompt_info import PromptInfo
+from models.retrieval_qa import create_retrieval_qa
+from db.study_stream_dao import update_note
+from models.prompt_info import PromptInfo
 from models.model_info import ModelInfo
 from .study_stream_task import StudyStreamTaskWorker
 from .study_stream_error import StudyStreamException
 from .study_stream_message_type import StudyStreamMessageType
 from .study_stream_message_widget import StudyStreamMessageWidget
+from study_stream_api.study_stream_subject import StudyStreamSubject
+from study_stream_api.study_stream_message import StudyStreamMessage
+from study_stream_api.study_stream_note import StudyStreamNote
+
+DEFAULT_STUDENT_NOTE = "Student Note"
 
 class StudyStreamAssistorPanel(QDockWidget):
     def __init__(self, parent: QObject, system_prompt: PromptInfo, app_config, color_scheme, asserts_path: str, db: Chroma, model_info: ModelInfo, verbose: bool, logging):
@@ -28,6 +34,8 @@ class StudyStreamAssistorPanel(QDockWidget):
         self.verbose = verbose
         self.timer = None
         self.rotate_icon_angle = 0
+        self.messages = []
+        self.study_target = None
         self.create_assistor()
         self.initUI()
 
@@ -46,6 +54,10 @@ class StudyStreamAssistorPanel(QDockWidget):
         chat_layout = QVBoxLayout(chat_widget)
         chat_layout.setContentsMargins(5, 5, 5, 5)
         chat_layout.setSpacing(5)
+
+        self.title_lable = QLabel(DEFAULT_STUDENT_NOTE)
+        self.title_lable.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        chat_layout.addWidget(self.title_lable)
 
         # Scroll area for chat display
         self.scroll_area = QScrollArea(chat_widget)
@@ -75,21 +87,23 @@ class StudyStreamAssistorPanel(QDockWidget):
         self.datetime_css = self.color_scheme['datetime-css']
         self.datetime_user_css = self.color_scheme['datetime-user-css']
 
-        self.attach_button = QPushButton()
-        icon_path = self.asserts_path + self.app_config['file_attach_icon']
-        self.attach_button.setIcon(QIcon(icon_path))
-        self.attach_button.setIconSize(QSize(32, 32))  # Increased icon size
-        self.attach_button.setFixedSize(48, 48)
-        self.attach_button.setStyleSheet(self.icon_css)
-        input_area_layout.addWidget(self.attach_button, alignment=Qt.AlignmentFlag.AlignTop)
+        self.save_chat_button = QPushButton()
+        icon_path = self.asserts_path + self.app_config['save_chat_icon']
+        self.save_chat_button.setIcon(QIcon(icon_path))
+        self.save_chat_button.setIconSize(QSize(32, 32))  # Increased icon size
+        self.save_chat_button.setFixedSize(48, 48)
+        self.save_chat_button.setStyleSheet(self.icon_css)
+        self.save_chat_button.clicked.connect(self.save_chat)
+        self.save_chat_button.setDisabled(True)
+        input_area_layout.addWidget(self.save_chat_button, alignment=Qt.AlignmentFlag.AlignTop)
 
-        self.chat_input = QTextEdit()
-        self.chat_input.setPlaceholderText(self.app_config['chat_ask_placeholder'])
-        self.chat_input.setFont(QFont(self.app_config['chat_font'], self.app_config['chat_font_size']))
-        self.chat_input.setStyleSheet(self.color_scheme["chat-text-css"])
-        self.chat_input.setFixedHeight(100)  # Limit height to 20% of the window height
-        self.chat_input.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        input_area_layout.addWidget(self.chat_input)
+        self.chat_input_area = QTextEdit()
+        self.chat_input_area.setPlaceholderText(self.app_config['chat_ask_placeholder'])
+        self.chat_input_area.setFont(QFont(self.app_config['chat_font'], self.app_config['chat_font_size']))
+        self.chat_input_area.setStyleSheet(self.color_scheme["chat-text-css"])
+        self.chat_input_area.setFixedHeight(100)  # Limit height to 20% of the window height
+        self.chat_input_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        input_area_layout.addWidget(self.chat_input_area)
 
         self.send_button = QPushButton()
         icon_path = self.asserts_path + self.app_config['send_button_icon']
@@ -106,13 +120,59 @@ class StudyStreamAssistorPanel(QDockWidget):
         chat_layout.addWidget(input_area, alignment=Qt.AlignmentFlag.AlignBottom)
         
         self.setWidget(chat_widget)
+
+    def set_study_taget(self, target: StudyStreamSubject):
+        if target and (not self.study_target or target.id != self.study_target): 
+            self.study_target = target               
+            self.title_lable.setText(self.study_target.class_name)
+            self.load_student_note(self.study_target.note)
+        else:     
+            self.title_lable.setText(DEFAULT_STUDENT_NOTE)
+
+    def load_student_note(self, note: StudyStreamNote):
+        self.clear_chat()
+        if note:
+            self.messages = note.to_messages()
+            for message in self.messages:
+                if message.type == StudyStreamMessageType.USER:
+                    self.add_message(
+                        message=message,
+                        message_type=StudyStreamMessageType.USER,
+                        text_css=self.user_message,
+                        icon_css=self.icon_css,
+                        datetime_css=self.datetime_user_css
+                    )
+                elif message.type == StudyStreamMessageType.SYSTEM:
+                    self.add_message(
+                        message=message,
+                        message_type=StudyStreamMessageType.SYSTEM, 
+                        text_css=self.ai_message, 
+                        icon_css=self.ai_icon_css,
+                        datetime_css=self.datetime_css
+                    ) 
+        else:
+            self.messages = []             
+    
+    def save_chat(self):
+        if self.study_target  and self.messages and len(self.messages) > 0:
+            json_txt = StudyStreamNote.messages_to_json(messages=self.messages)
+            self.study_target.note = json_txt            
+            updated_class = update_note(updated_class=self.study_target)
+            if updated_class:
+                self.attach_button.setDisabled(True) 
     
     def send_message(self):
-        self.set_chat_state(enabled=False)
-        question = self.chat_input.toPlainText()
+        self.set_chat_state(is_chat_enabled=False)
+        question = self.chat_input_area.toPlainText()
         self.send_question(question=question)
 
     def send_question(self, question: str):    
+        new_message = StudyStreamMessage(
+            type=StudyStreamMessageType.USER,
+            content=question
+        )
+        self.messages.append(new_message)
+        self.save_chat_button.setDisabled(False) 
         self.add_message(
             message=question, 
             message_type=StudyStreamMessageType.USER, 
@@ -120,7 +180,7 @@ class StudyStreamAssistorPanel(QDockWidget):
             icon_css=self.icon_css,
             datetime_css=self.datetime_user_css
         )
-        self.chat_input.clear()
+        self.chat_input_area.clear()
         self.timer = QTimer()
         self.timer.timeout.connect(self.rotate_icon)
         self.timer.start(500)
@@ -143,7 +203,13 @@ class StudyStreamAssistorPanel(QDockWidget):
         return self.qa_service(question)    
 
     def on_task_complete(self, results):            
-        answer, docs = results["result"], results["source_documents"] 
+        answer, docs = results["result"], results["source_documents"]          
+        new_message = StudyStreamMessage(
+            type=StudyStreamMessageType.SYSTEM,
+            content=self.ai_message
+        )
+        self.messages.append(new_message)
+        self.save_chat_button.setDisabled(False) 
         self.add_message(
             message=answer, 
             message_type=StudyStreamMessageType.SYSTEM, 
@@ -160,28 +226,28 @@ class StudyStreamAssistorPanel(QDockWidget):
         else:            
             self.logging.info(f"Got the answer from ai.")
         
-        self.set_chat_state(enabled=True)        
+        self.set_chat_state(is_chat_enabled=True)        
 
     def on_task_error(self, error):
         self.logging.info(f"Failed to get an answer from ai: {error}")
-        self.set_chat_state(enabled=True)
+        self.set_chat_state(is_chat_enabled=True)
 
-    def set_chat_state(self, enabled: bool):
-        if enabled:
+    def set_chat_state(self, is_chat_enabled: bool):
+        if is_chat_enabled:
             if self.timer:
                 self.timer.stop()
                 self.timer = None   
             self.rotate_icon_angle = 0      
-            self.attach_button.setDisabled(False)
+            self.save_chat_button.setDisabled(False)
             self.send_button.setDisabled(False)
             self.send_button.setIcon(self.send_button_icon)
-            self.chat_input.setPlaceholderText(self.app_config['chat_ask_placeholder'])
-            self.chat_input.setEnabled(True)
+            self.chat_input_area.setPlaceholderText(self.app_config['chat_ask_placeholder'])
+            self.chat_input_area.setEnabled(True)
         else: 
-            self.attach_button.setDisabled(True)
+            self.save_chat_button.setDisabled(True)
             self.send_button.setDisabled(True)
-            self.chat_input.setPlaceholderText(self.app_config['chat_waiting_message'])
-            self.chat_input.setEnabled(False)
+            self.chat_input_area.setPlaceholderText(self.app_config['chat_waiting_message'])
+            self.chat_input_area.setEnabled(False)
 
     def add_message(self, message: str, message_type: StudyStreamMessageType, text_css: str, icon_css: str, datetime_css: str):
         icon = message_type.get_icon(app_config=self.app_config, asserts_path=self.asserts_path)
@@ -195,3 +261,9 @@ class StudyStreamAssistorPanel(QDockWidget):
             self.scroll_area.verticalScrollBar().maximum() + widget_height + 50
         )
         self.scroll_area.show()
+
+    def clear_chat(self):
+        while  self.scroll_layout.count():
+            child = self.scroll_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()    

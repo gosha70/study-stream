@@ -26,12 +26,12 @@ class PromptInfo:
     def __init__(self, system_prompt, template_type, use_history):
         self._system_prompt = system_prompt
 
-        if template_type is not None:
+        if template_type:
             self._template_type = template_type
         else:    
             self._template_type = LLAMA_MODEL_NAME
 
-        if use_history is not None:
+        if use_history:
             self._use_history = use_history
         else:    
             self._use_history = False

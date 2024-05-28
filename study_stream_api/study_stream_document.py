@@ -3,14 +3,15 @@
 from datetime import datetime
 from typing import List
 import pytz
+
 from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, SmallInteger
 from sqlalchemy.orm import relationship
-from .study_stream_message import StudyStreamMessage
-from .study_stream_message_link import Base
-from .study_stream_document_status import StudyStreamDocumentStatus
-from embeddings.unstructured.file_type import FileType
-from .study_stream_message_link_type import StudyStreamMessageLinkType
 
+from .study_stream_message import StudyStreamMessage
+from .study_stream_note import Base
+from .study_stream_document_status import StudyStreamDocumentStatus
+
+from embeddings.unstructured.file_type import FileType
 
 """
 Stores the information about a class document a student added and read 
@@ -59,7 +60,7 @@ class StudyStreamDocument(Base):
         self.file_type = value.int_value  
     
     def add_message(self, session, message: StudyStreamMessage):
-        StudyStreamMessage.link_message(session, message.id, StudyStreamMessageLinkType.DOCUMENT, self.id)
+        StudyStreamMessage.link_message(session, message.id, StudyStreamNoteLinkType.DOCUMENT, self.id)
 
     # CRUD operations
     @staticmethod
@@ -72,8 +73,8 @@ class StudyStreamDocument(Base):
     def read(session, document_id):
         return session.query(StudyStreamDocument).filter_by(id=document_id).first()
 
-    def update(self, session, **kwargs):
-        for key, value in kwargs.items():
+    def update(self, session, **update_values):
+        for key, value in update_values.items():
             setattr(self, key, value)
         session.commit()
 

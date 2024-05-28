@@ -7,6 +7,7 @@ from langchain_community.llms import HuggingFacePipeline, LlamaCpp
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.callbacks.manager import CallbackManager
 
+
 from transformers import (
     GenerationConfig,
     pipeline,
@@ -19,7 +20,7 @@ from models.gguf_lm import load_gguf_model as gguf
 from models.gptq_lm import load_gptq_model as qptq
 from models.pretrained_lm import load_pretrained_model as pretrained
 
-from retrieval_constants import (
+from models.retrieval_constants import (
     AWQ_EXTENSION, 
     CACHE_DIR, 
     CHAIN_TYPE_STUFF,

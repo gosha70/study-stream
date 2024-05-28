@@ -16,15 +16,15 @@ install_homebrew() {
 install_postgresql_mac() {
     install_homebrew
 
-    if ! brew list postgresql > /dev/null 2>&1; then
+    if ! brew list postgresql@14 > /dev/null 2>&1; then
         echo "Installing PostgreSQL..."
-        brew install postgresql
+        brew install postgresql@14
     else
         echo "PostgreSQL is already installed."
     fi
 
     echo "Starting PostgreSQL service..."
-    brew services start postgresql
+    brew services start postgresql@14
 }
 
 # Function to install PostgreSQL using apt-get (Linux)
@@ -51,6 +51,7 @@ generate_env_file() {
 
     cat <<EOF > profiles/.env
 LLM_FOLDER=llm_models    
+DOCUMENT_FOLDER=study_document
 COLOR_SCHEME=dark 
 OPEN_AI_ENABLED=false
 OPEN_AI_KEY=   
@@ -107,20 +108,20 @@ fi
 
 # Start PostgreSQL service
 if [ "$OS_TYPE" == "Darwin" ]; then
-    brew services start postgresql
+    brew services start postgresql@14
 elif [ "$OS_TYPE" == "Linux" ]; then
     sudo systemctl start postgresql
 fi
 
-# Create database and user
+# Create database and user if they don't exist
 echo "Creating database and user..."
 if [ "$OS_TYPE" == "Darwin" ]; then
-    psql postgres -c "CREATE DATABASE $DB_NAME;"
-    psql postgres -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';"
+    psql postgres -tc "SELECT 1 FROM pg_database WHERE datname = '$DB_NAME'" | grep -q 1 || psql postgres -c "CREATE DATABASE $DB_NAME;"
+    psql postgres -tc "SELECT 1 FROM pg_roles WHERE rolname = '$DB_USER'" | grep -q 1 || psql postgres -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';"
     psql postgres -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;"
 elif [ "$OS_TYPE" == "Linux" ]; then
-    sudo -u postgres psql -c "CREATE DATABASE $DB_NAME;"
-    sudo -u postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';"
+    sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname = '$DB_NAME'" | grep -q 1 || sudo -u postgres psql -c "CREATE DATABASE $DB_NAME;"
+    sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname = '$DB_USER'" | grep -q 1 || sudo -u postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';"
     sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;"
 fi
 

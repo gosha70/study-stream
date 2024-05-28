@@ -25,11 +25,7 @@ class StudyStreamMessageType(Enum):
         rotated_pixmap = rotating_icon.transformed(transform, mode=Qt.TransformationMode.FastTransformation)
         return QIcon(rotated_pixmap), rotate_icon_angle   
     
-    def get_icon(self, app_config, asserts_path: str) -> QPixmap:
-        # Debug prints
-        print("Checking icon_map:", icon_map)
-        print("Current key:", self)
-        
+    def get_icon(self, app_config, asserts_path: str) -> QPixmap:        
         # Ensure the icon_map is a dictionary
         if not isinstance(icon_map, dict):
             raise TypeError("icon_map should be a dictionary")

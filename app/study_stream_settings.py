@@ -5,7 +5,7 @@ import shutil
 import json
 from PySide6.QtWidgets import (QVBoxLayout, QWidget, QDialog, 
                                QComboBox, QLineEdit, QPushButton,
-                               QCheckBox, QLabel, QHBoxLayout, QGridLayout, QFrame)
+                               QLabel, QHBoxLayout, QGridLayout, QFrame)
 from PySide6.QtGui import QIcon, Qt
 from PySide6.QtCore import QSize
 from dotenv import load_dotenv
@@ -53,13 +53,19 @@ class StudyStreamSettings(QDialog):
         self.control_css = self.main_color_scheme['control-css']        
         self.label_css = self.main_color_scheme['label-css']
 
-        top_layout = QGridLayout()      
+        top_layout = QGridLayout()   
         
-        llm_folder_label = QLabel("LLM Folder:")
+        llm_folder_label = QLabel("Model Folder:")
         top_layout.addWidget(llm_folder_label, 0, 0)
         self.llm_folder_input = QLineEdit("NONE")
         self.llm_folder_input.setStyleSheet(self.control_css)
         top_layout.addWidget(self.llm_folder_input, 0, 1)
+        
+        doc_folder_label = QLabel("Document Folder:")
+        top_layout.addWidget(doc_folder_label, 1, 0)
+        self.doc_folder_input = QLineEdit("NONE")
+        self.doc_folder_input.setStyleSheet(self.control_css)
+        top_layout.addWidget(self.doc_folder_input, 1, 1)
 
         self.checked_icon = QIcon(self.current_dir + self.app_config['checked_icon'])
         self.unchecked_icon = QIcon(self.current_dir + self.app_config['unchecked_icon'])
@@ -71,14 +77,14 @@ class StudyStreamSettings(QDialog):
         self.open_ai_button.setIconSize(QSize(icon_width, icon_height))
         self.open_ai_button.clicked.connect(self.check_open_ai)
         self.open_ai_button.setStyleSheet(self.icon_css)
-        top_layout.addWidget(self.open_ai_button, 1, 0)
+        top_layout.addWidget(self.open_ai_button, 2, 0)
 
         open_ai_api_key_label = QLabel("Open AI API Key:")
-        top_layout.addWidget(open_ai_api_key_label, 2, 0)
+        top_layout.addWidget(open_ai_api_key_label, 3, 0)
         self.open_ai_api_key_input = QLineEdit("NONE")
         self.open_ai_api_key_input.setEchoMode(QLineEdit.Password)
         self.open_ai_api_key_input.setStyleSheet(self.control_css)
-        top_layout.addWidget(self.open_ai_api_key_input, 2, 1)
+        top_layout.addWidget(self.open_ai_api_key_input, 3, 1)
 
         self.show_password_flag = False
         self.lock_icon = QIcon(self.current_dir + self.app_config['lock-icon']) 
@@ -89,14 +95,14 @@ class StudyStreamSettings(QDialog):
         self.show_password_button.setFixedSize(48, 48)
         self.show_password_button.setStyleSheet(self.icon_css)
         self.show_password_button.clicked.connect(self.toggle_password_visibility)
-        top_layout.addWidget(self.show_password_button, 2, 2)
+        top_layout.addWidget(self.show_password_button, 3, 2)
 
         self.color_scheme_label = QLabel("Color Scheme:")
-        top_layout.addWidget(self.color_scheme_label, 3, 0)
+        top_layout.addWidget(self.color_scheme_label, 4, 0)
         self.color_scheme_dropdown = QComboBox()
         self.color_scheme_dropdown.addItems(["dark", "light", "turquoise"])  
         self.color_scheme_dropdown.setStyleSheet(self.control_css)  
-        top_layout.addWidget(self.color_scheme_dropdown, 3, 1)
+        top_layout.addWidget(self.color_scheme_dropdown, 4, 1)
 
         # Set column widths
         top_layout.setColumnStretch(0, 1)  # First column
@@ -212,8 +218,10 @@ class StudyStreamSettings(QDialog):
 
     def refresh_settings(self):  
         self.logging.info("Refesh Settings Dialog")
-        self.orig_llm_folder = os.getenv("LLM_FOLDER")
+        self.orig_llm_folder = os.getenv("LLM_FOLDER") 
         self.llm_folder_input.setText(self.orig_llm_folder)
+        self.orig_doc_folder = os.getenv("DOCUMENT_FOLDER") 
+        self.doc_folder_input.setText(self.orig_doc_folder) 
         self.orig_open_ai_enabled = os.getenv("OPEN_AI_ENABLED", "false").lower() in ("true", "1", "t")
         self.open_ai_button_flag = not self.orig_open_ai_enabled
         self.check_open_ai()
@@ -269,7 +277,16 @@ class StudyStreamSettings(QDialog):
 
     def apply_settings(self): 
         self.logging.info("Updating application settings ...")
-        self.update_llm_folder()
+        self.update_folder(
+            property="LLM_FOLDER", 
+            orig_folder=self.orig_llm_folder, 
+            folder_path=self.llm_folder_input.text()
+        )
+        self.update_folder(
+            property="DOCUMENT_FOLDER", 
+            orig_folder=self.orig_doc_folder, 
+            folder_path=self.doc_folder_input.text()
+        )
         self.update_simple_properties()
         self.update_database()
         self.close()
@@ -307,15 +324,14 @@ class StudyStreamSettings(QDialog):
             self.update_env_var("COLOR_SCHEME", new_text)
             self.load_color_scheme()
 
-    def update_llm_folder(self):
+    def update_folder(self, property: str, orig_folder: str, folder_path: str):
         """
         Copies all contents from the source directory to the destination directory.
         """
-        dest_folder = self.llm_folder_input.text()
-        if self.orig_llm_folder == dest_folder:
+        if orig_folder == folder_path:
             return
-        src_folder_path = self.current_dir + "/" + self.orig_llm_folder
-        dest_folder_path = self.current_dir + "/" + dest_folder     
+        src_folder_path = self.current_dir + "/" + orig_folder
+        dest_folder_path = self.current_dir + "/" + folder_path     
         # Ensure the destination directory exists
         if not os.path.exists(dest_folder_path):
             os.makedirs(dest_folder_path)
@@ -330,9 +346,9 @@ class StudyStreamSettings(QDialog):
                     else:
                         shutil.copy2(s, d)
                 self.logging.info(f"Contents copied from {src_folder_path} to {dest_folder_path}")
-                self.update_env_var("LLM_FOLDER", dest_folder)           
+                self.update_env_var(property, folder_path)           
             except Exception as e:
-                self.logging.error(f"An error occurred while copying contents of LLM folder from '{src_folder_path}' to '{dest_folder_path}': {e}")
+                self.logging.error(f"An error occurred while copying contents of '{property}' from '{src_folder_path}' to '{dest_folder_path}': {e}")
     
     def update_env_var(self, key, value):
         # Read the .env file

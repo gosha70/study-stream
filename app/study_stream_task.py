@@ -1,5 +1,6 @@
 # Copyright (c) EGOGE - All Rights Reserved.
 # This software may be used and distributed according to the terms of the Apache-2.0 license.
+import traceback
 from PySide6.QtCore import QObject, QThread
 from PySide6.QtCore import Signal
 
@@ -27,9 +28,13 @@ class StudyStreamTaskWorker(QObject):
 
     def run_task(self):
         try:
+            print(f"<StudyStreamTaskWorker> Task is running ...")
             result = self.func(*self.args, **self.kwargs)
             self.finished.emit(result)
+            print(f"<StudyStreamTaskWorker> Task is finished")
         except Exception as e:
+            print(f"<StudyStreamTaskWorker> Task failed  with {e}")
+            traceback.print_exc()
             self.error.emit(e)
 
     def finished_handling(self, result):

@@ -6,6 +6,8 @@ from PySide6.QtCore import QObject, Qt
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QFileDialog, QListWidgetItem)
 from PySide6.QtGui import QPixmap, QImage
 
+from langchain_community.vectorstores import Chroma
+
 from study_stream_api.study_stream_subject import StudyStreamSubject
 from study_stream_api.study_stream_document import StudyStreamDocument
 from .study_stream_object_view import StudyStreamObjectView
@@ -18,12 +20,16 @@ class StudyStreamDocumentView(QWidget):
             app_config, 
             main_color_scheme, 
             asserts_path: str, 
+            db: Chroma, 
+            load_chat_lambda,
             verbose: bool, 
             logging):
         super().__init__()
         self.parent = parent
         self.logging = logging
         self.asserts_path = asserts_path
+        self.docs_db = db
+        self.load_chat_lambda = load_chat_lambda
         self.color_scheme = main_color_scheme['center_panel']
         self.object_color_scheme = main_color_scheme['settings-css']
         self.app_config = app_config
@@ -54,6 +60,8 @@ class StudyStreamDocumentView(QWidget):
             app_config=self.app_config, 
             color_scheme=self.object_color_scheme, 
             current_dir= self.asserts_path,
+            db=self.docs_db,
+            load_chat_lambda=self.load_chat_lambda,
             logging=self.logging
         ) 
         central_panel.addWidget(self.object_view, alignment=Qt.AlignmentFlag.AlignTop)  
@@ -114,7 +122,6 @@ class StudyStreamDocumentView(QWidget):
 
     def load_document(self):
         for file in self.pdf_files:
-            print(f"Loading the document from {file}")
             item = QListWidgetItem(file.split('/')[-1])
             item.setData(Qt.ItemDataRole.UserRole, file)
 

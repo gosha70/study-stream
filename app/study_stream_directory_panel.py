@@ -2,17 +2,11 @@
 # This software may be used and distributed according to the terms of the Apache-2.0 license.
 from typing import List
 
-from PySide6.QtCore import QObject, Qt, QTimer
+from PySide6.QtCore import QObject, Qt
 from PySide6.QtWidgets import (QDockWidget, QFileDialog, QToolBar, QWidget, 
                              QTreeWidget, QTreeWidgetItem, QMenu, QVBoxLayout, QMessageBox)
 from PySide6.QtGui import QIcon, QPixmap, QAction
 
-from langchain_community.vectorstores import Chroma
-from embeddings.unstructured.document_splitter import DocumentSplitter
-from embeddings.embedding_database import add_file_content_to_db
-
-from .study_stream_task import StudyStreamTaskWorker
-from .study_stream_message_type import StudyStreamMessageType
 from .study_stream_document_view import StudyStreamDocumentView
 from study_stream_api.study_stream_subject import StudyStreamSubject
 from study_stream_api.study_stream_document import StudyStreamDocument
@@ -34,7 +28,6 @@ class StudyStreamDirectoryPanel(QDockWidget):
                  app_config, 
                  color_scheme, 
                  asserts_path: str, 
-                 db: Chroma, 
                  logging):
         super().__init__(parent=parent)
         self.parent = parent
@@ -44,14 +37,10 @@ class StudyStreamDirectoryPanel(QDockWidget):
         self.asserts_path = asserts_path
         self.color_scheme = color_scheme
         self.app_config = app_config
-        self.db = db
-        self.document_splitter = DocumentSplitter(logging)
         self.page_index = 0  # Initialize page_index here
         self.selected_folder = None
         self.selected_file = None
         self.selected_school = None
-        self.file_in_progress = None 
-        self.file_task = None
         self.schools = []
         self.displayed_target = None 
         self.initPanel()
@@ -67,9 +56,7 @@ class StudyStreamDirectoryPanel(QDockWidget):
         
         self.inactive_file_icon = QIcon(self.get_image_path("inactive_file_icon"))
         self.active_file_icon = QIcon(self.get_image_path("active_file_icon"))  
-        self.loading_icon = QIcon(self.get_image_path("loading_icon"))          
-        self.rotating_icon = QPixmap(self.get_image_path("loading_icon"))  
-
+        self.loading_icon = QIcon(self.get_image_path("loading_icon"))   
         self.school_selected_icon = QIcon(self.get_image_path("opened_school_icon")) 
         self.school_icon = QPixmap(self.get_image_path("school_icon")) 
 
@@ -154,7 +141,22 @@ class StudyStreamDirectoryPanel(QDockWidget):
             self.class_tree.clear()
             self.class_tree.clearSelection()
             self.class_tree.setCurrentItem(None) 
-            self.load_study_stream_schema()            
+            self.load_study_stream_schema() 
+    
+    def on_save_item(self, name: str, status: StudyStreamDocumentStatus):
+        if self.selected_school:
+            self.selected_school.setText(0, name)
+        elif self.selected_folder:
+            self.selected_folder.setText(0, name)
+        elif self.selected_file:
+            self.selected_file.setText(0, name)  
+            if status:
+                if status == StudyStreamDocumentStatus.IN_PROGRESS:
+                    self.selected_file.setIcon(0, self.loading_icon)    
+                elif status == StudyStreamDocumentStatus.PROCESSED:
+                    self.selected_file.setIcon(0, self.active_file_icon) 
+                else:   
+                    self.selected_file.setIcon(0, self.inactive_file_icon)                 
 
     def load_study_stream_schema(self)-> List[StudyStreamSchool]:
         self.schools = fetch_all_schools_with_related_data()
@@ -236,57 +238,6 @@ class StudyStreamDirectoryPanel(QDockWidget):
                     
             self.class_tree.editItem(item, 0)  # Only edit if the item is set to be editable
 
-    def process_document(self, item: QTreeWidgetItem):    
-        # Setup timer for icon animation
-        item_target = item.data(0, Qt.ItemDataRole.UserRole)
-        if isinstance(item_target, StudyStreamDocument):
-            if item_target.file_path:
-                # Asynchroneously run the adding Documemt to the embedding vector store 
-                self.rotate_icon_angle = 0
-                self.file_in_progress = item 
-                item_target.status = StudyStreamDocumentStatus.IN_PROGRESS
-                self.rotate_icon() 
-                self.timer = QTimer()
-                self.timer.timeout.connect(self.rotate_icon)
-                self.timer.start(500)
-                self.async_task(document=item_target)
-    
-    def async_task(self, document: StudyStreamDocument):   
-        self.file_task = StudyStreamTaskWorker(add_file_content_to_db, self.db, self.document_splitter, document.file_path)
-        self.file_task.finished.connect(lambda result: self.on_task_complete(result))
-        self.file_task.error.connect(lambda error: self.on_task_error(error))
-        self.file_task.run()
-
-    def on_task_complete(self, result):
-        if self.file_in_progress:
-            item_target = self.file_in_progress.data(0, Qt.ItemDataRole.UserRole)
-            if isinstance(item_target, StudyStreamDocument):
-                self.logging.info(f"Has finished processing '{item_target.name}': {result}")
-                if self.timer:
-                    self.timer.stop()
-                    self.timer = None            
-                item_target.status = StudyStreamDocumentStatus.PROCESSED   
-                self.file_in_progress.setIcon(0, self.active_file_icon) 
-                self.file_in_progress = None    
-
-    def on_task_error(self, error):
-        if self.file_in_progress:
-            item_target = self.file_in_progress.data(0, Qt.ItemDataRole.UserRole)
-            if isinstance(item_target, StudyStreamDocument):
-                self.logging.info(f"Failed to rocess '{item_target.name}': {error}")
-                if self.timer:
-                    self.timer.stop()
-                    self.timer = None                        
-                item_target.status = StudyStreamDocumentStatus.NEW       
-                self.file_in_progress.setIcon(0, self.inactive_file_icon) 
-                self.file_in_progress = None        
-
-    def rotate_icon(self):    
-        final_icon, self.rotate_icon_angle = StudyStreamMessageType.rotate_icon(
-            rotating_icon=self.rotating_icon, 
-            rotate_icon_angle=self.rotate_icon_angle
-        )
-        self.file_in_progress.setIcon(0, final_icon) 
     
     def new_school(self):
         school_entity = StudyStreamSchool(school_name=DEFAULT_SCHOOL_NAME, school_type=StudyStreamSchoolType.COLLEGE) 
@@ -375,7 +326,6 @@ class StudyStreamDirectoryPanel(QDockWidget):
     def handle_selection_changed(self):
         current_item = self.class_tree.currentItem()
         if current_item:
-            print(current_item.text(0))
             item_target = current_item.data(0, Qt.ItemDataRole.UserRole)
             if isinstance(item_target, StudyStreamDocument): 
                 if item_target != self.displayed_target:                    
@@ -385,7 +335,7 @@ class StudyStreamDirectoryPanel(QDockWidget):
                     self.new_doc_action.setEnabled(False)   
                     self.displayed_target = item_target   
                     self.document_view.show_content(item=item_target)
-                    self.object_view.display_document(document=item_target) 
+                    self.object_view.display_document(document=item_target, on_save_item=self.on_save_item) 
             elif isinstance(item_target, StudyStreamSubject):     
                 if item_target != self.displayed_target:      
                     self.selected_folder = current_item   
@@ -394,7 +344,7 @@ class StudyStreamDirectoryPanel(QDockWidget):
                     self.new_subject_action.setEnabled(False)  
                     self.new_doc_action.setEnabled(True)    
                     self.displayed_target = item_target   
-                    self.object_view.display_class(subject=item_target)  
+                    self.object_view.display_class(subject=item_target, on_save_item=self.on_save_item)  
             elif isinstance(item_target, StudyStreamSchool):     
                 if item_target != self.displayed_target:   
                     self.select_school(tree_item=current_item, school=item_target)  
@@ -406,4 +356,4 @@ class StudyStreamDirectoryPanel(QDockWidget):
         self.new_subject_action.setEnabled(True)
         self.new_doc_action.setEnabled(False) 
         self.displayed_target = school 
-        self.object_view.display_school(school=school) 
+        self.object_view.display_school(school=school, on_save_item=self.on_save_item) 

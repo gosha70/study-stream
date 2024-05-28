@@ -5,9 +5,7 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP
 from sqlalchemy.orm import relationship
 from .study_stream_document import StudyStreamDocument
-from .study_stream_message import StudyStreamMessage
-from .study_stream_message_link import Base
-from .study_stream_message_link_type import StudyStreamMessageLinkType
+from .study_stream_note import Base
 
 """
 Stores the information about a class and documents associated with it.
@@ -22,16 +20,10 @@ class StudyStreamSubject(Base):
     finish_date = Column(TIMESTAMP)
 
     documents = relationship('StudyStreamDocument', backref='subject', cascade='all, delete-orphan')
+    note = relationship("StudyStreamNote", uselist=False, back_populates="subject", cascade="all, delete-orphan", primaryjoin="StudyStreamSubject.id == StudyStreamNote.subject_id")
 
     def __init__(self, class_name: str):
         self.class_name = class_name
-
-    @property
-    def messages(self) -> List[StudyStreamMessage]:
-        return self.messages
-    
-    def add_message(self, session, message: StudyStreamMessage):
-        StudyStreamMessage.link_message(session, message.id, StudyStreamMessageLinkType.SUBJECT, self.id)
 
     def add_document(self, document: StudyStreamDocument):
         self.documents.append(document)

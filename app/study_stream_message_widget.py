@@ -25,14 +25,12 @@ class StudyStreamMessageWidget(QWidget):
         # Message box as QTextBrowser
         self.message_box = QTextBrowser(self)
         self.message_box.setHtml(self.to_html(self.message))
-        print(f"CSS: {self.text_css}")
         self.message_box.setStyleSheet(self.text_css)
         self.message_box.setFrameStyle(QFrame.Shape.NoFrame)
         self.message_box.setMaximumHeight(max_height)
         self.message_box.setOpenExternalLinks(True)
         self.message_box.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        #self.message_box.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
-        self.message_box.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  # Hide vertical scrollbar: ScrollBarAsNeeded
+        self.message_box.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  
 
         # Adjust height dynamically
         self.adjust_message_box_height()

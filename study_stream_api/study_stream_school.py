@@ -4,11 +4,9 @@ from typing import List
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, TIMESTAMP, SmallInteger
 from sqlalchemy.orm import relationship
-from .study_stream_subject import StudyStreamSubject
 from .study_stream_message import StudyStreamMessage
 from .study_stream_school_type import StudyStreamSchoolType
-from .study_stream_message_link import Base
-from .study_stream_message_link_type import StudyStreamMessageLinkType
+from .study_stream_note import Base
 
 """
 Stores the information about a class and documents associated with it.
@@ -33,7 +31,7 @@ class StudyStreamSchool(Base):
         return StudyStreamSchoolType(self.school_type)
     
     def add_message(self, session, message: StudyStreamMessage):
-        StudyStreamMessage.link_message(session, message.id, StudyStreamMessageLinkType.SCHOOL, self.id)
+        StudyStreamMessage.link_message(session, message.id, StudyStreamNoteLinkType.SCHOOL, self.id)
 
     # CRUD operations
     @staticmethod
@@ -45,8 +43,10 @@ class StudyStreamSchool(Base):
     @staticmethod
     def read(session, school_id):
         return session.query(StudyStreamSchool).filter_by(id=school_id).first()
-
-    def update(self, session):
+   
+    def update(self, session, **update_values):
+        for key, value in update_values.items():
+            setattr(self, key, value)
         session.commit()
 
     @staticmethod

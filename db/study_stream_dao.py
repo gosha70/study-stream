@@ -10,9 +10,8 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy.orm import joinedload, subqueryload
 from study_stream_api.study_stream_school import StudyStreamSchool
 from study_stream_api.study_stream_subject import StudyStreamSubject
-from study_stream_api.study_stream_message import StudyStreamMessage
-from study_stream_api.study_stream_message_link import StudyStreamMessageLink
-from study_stream_api.study_stream_message_link_type import StudyStreamMessageLinkType
+from study_stream_api.study_stream_document import StudyStreamDocument
+from study_stream_api.study_stream_school_type import StudyStreamSchoolType
 
 # Context manager for session handling
 from contextlib import contextmanager
@@ -101,35 +100,27 @@ def create_tables(conn):
         creation_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         in_progress_date TIMESTAMP,
         processed_date TIMESTAMP
-    );                   
-                   
-    CREATE TABLE IF NOT EXISTS study_stream_message (
-        id SERIAL PRIMARY KEY,   
-        type SMALLINT NOT NULL,
-        public_content BYTEA NOT NULL,
-        secret_content BYTEA,
-        created_at TIMESTAMP NOT NULL          
-    );                   
-    
-    CREATE TABLE IF NOT EXISTS study_stream_message_link (
-        message_id INT REFERENCES study_stream_message(id) ON DELETE CASCADE,
-        entity_type SMALLINT NOT NULL,
-        entity_id INT NOT NULL,
-        PRIMARY KEY (message_id, entity_type)
-    );                              
+    );         
+
+    CREATE TABLE IF NOT EXISTS study_stream_note (
+        id SERIAL PRIMARY KEY,
+        subject_id INT UNIQUE REFERENCES study_stream_subject(id) ON DELETE CASCADE,
+        json_content JSONB NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );                    
     """)
     conn.commit()
     cursor.close()
 
 # Insert default/template data
 def insert_default_data(conn):
-    cursor = conn.cursor()
-    
+    cursor = conn.cursor()    
     # Insert dummy StudyStreamSchool
     cursor.execute("""
         INSERT INTO study_stream_school (name, school_type) 
         VALUES (%s, %s) RETURNING id
-    """, ('My School', StudyStreamMessageLinkType.SCHOOL.value))
+    """, ('My College', StudyStreamSchoolType.COLLEGE.value))
     school_id = cursor.fetchone()[0]
 
     # Insert dummy StudyStreamSubject
@@ -142,10 +133,9 @@ def insert_default_data(conn):
     cursor.close()
 
 def check_study_stream_database(logging):
-    conn = get_db_connection()
-    
+    conn = get_db_connection()    
     # Check and create tables if they don't exist
-    if not table_exists(conn, 'study_stream_message'):
+    if not table_exists(conn, 'study_stream_note'):
         logging.info("Creating Study Stream tables ...")
         create_tables(conn)
         logging.info("Creating default School with one Subject ...")
@@ -165,59 +155,42 @@ def get_school_with_subjects(school_id):
     except Exception as e:
         print("An error occurred while fetching schools with related data.")
         print(traceback.format_exc())
-    return []          
+    return []  
 
-def fetch_all_schools_with_related_data()-> List[StudyStreamSchool]:
+def fetch_all_schools_with_related_data() -> List[StudyStreamSchool]:
     try:
         with get_session() as session:
             schools = session.query(StudyStreamSchool).options(
                 joinedload(StudyStreamSchool.subjects).options(
-                    subqueryload(StudyStreamSubject.documents)
+                    joinedload(StudyStreamSubject.documents),
+                    joinedload(StudyStreamSubject.note)
                 )
             ).all()
             for school in schools:
-                process_school(session,school)     
-        return schools                    
+                process_school(session, school)
+        return schools
     except Exception as e:
         print("An error occurred while fetching schools with related data.")
         print(traceback.format_exc())
-    return []     
+    return [] 
 
 def process_school(session, school: StudyStreamSchool):
     print(f"DB Fetch for School: {school.name}, Type: {school.school_type}")
-    messages = fetch_messages(session, StudyStreamMessageLinkType.SCHOOL.value, school.id)
-    if len(messages) > 0:
-        school.messages = messages
     for subject in school.subjects:
         print(f"DB Fetch for Subject: {subject.class_name}")
-        messages = fetch_messages(session, StudyStreamMessageLinkType.SUBJECT.value, subject.id)
-        if len(messages) > 0:
-            subject.messages = messages
+        if subject.note:
+            messages = subject.note.to_messages()
+            for message in messages:
+                print(f"    Message: {message.content}, Created At: {message.created_at}")
         for document in subject.documents:
             print(f"DB Fetch for Document: {document.name}, File Path: {document.file_path}, Status: {document.status}")
-            messages = fetch_messages(session, StudyStreamMessageLinkType.DOCUMENT.value, document.id)
-            if len(messages) > 0:
-                document.messages = messages
-            session.expunge(document)                      
-        session.expunge(subject)                       
-    session.expunge(school) 
+            session.expunge(document)
+        session.expunge(subject)
+    session.expunge(school)
 
-def fetch_messages(session, entity_type, entity_id)-> List[StudyStreamMessage]:
-    try:
-        links = session.query(StudyStreamMessageLink).filter_by(entity_type=entity_type, entity_id=entity_id).all()
-        messages = []
-        for link in links:
-            message = session.query(StudyStreamMessage).filter_by(id=link.message_id).first()
-            if message:
-                print(f"    Message Type: {message.type}")
-                messages.append(message)
-            session.expunge(message)       
-        return messages      
-    except Exception as e:
-        print("An error occurred while fetching schools with related data.")
-        print(traceback.format_exc())
-    return []   
-
+def fetch_messages_for_subject(session, subject_id):
+    subject = session.query(StudyStreamSubject).options(joinedload(StudyStreamSubject.note)).filter_by(id=subject_id).first()
+    return subject.note.to_messages() if subject and subject.note else []
 
 def create_entity(entity):
     with get_session() as session:
@@ -226,3 +199,103 @@ def create_entity(entity):
         session.commit()     
 
     return entity
+
+def update_document(updated_document: StudyStreamDocument)-> StudyStreamDocument:
+    try:
+        with get_session() as session:
+            session.expire_on_commit = False
+            # Fetch the document
+            db_document = StudyStreamDocument.read(session, updated_document.id)
+            if not db_document:
+                print(f"Document with id {updated_document.id} not found.")
+                return None
+            
+            # Update values
+            update_values = {
+                'name': updated_document.name,
+                'status': updated_document.status,
+                'in_progress_date':  updated_document.in_progress_date,
+                'processed_date':  updated_document.processed_date
+            }
+            db_document.update(session, **update_values)
+            session.expunge(db_document)  
+            return db_document
+    except Exception as e:
+        print(f"An error occurred while updating Document: {updated_document.id}.")
+        print(traceback.format_exc())
+    return None  
+
+
+def update_class(updated_class: StudyStreamSubject)-> StudyStreamSubject:
+    try:
+        with get_session() as session:
+            session.expire_on_commit = False
+            # Fetch the document
+            db_class = StudyStreamSubject.read(session, updated_class.id)
+            if not db_class:
+                print(f"Class with id {updated_class.id} not found.")
+                return None
+            
+            print(f"Updating Class fields: name = '{updated_class.class_name}'; start_date = '{updated_class.start_date}'; finish_date = '{updated_class.finish_date}'")
+            # Update values
+            update_values = {
+                'class_name': updated_class.class_name,
+                'start_date': updated_class.start_date,
+                'finish_date':  updated_class.finish_date
+            }
+            db_class.update(session, **update_values)
+            session.expunge(db_class)  
+            return db_class
+    except Exception as e:
+        print(f"An error occurred while updating Class: {updated_class.id}.")
+        print(traceback.format_exc())
+    return None  
+
+def update_note(updated_class: StudyStreamSubject)-> StudyStreamSubject:
+    try:
+        with get_session() as session:
+            session.expire_on_commit = False
+            # Fetch the document
+            db_class = StudyStreamSubject.read(session, updated_class.id)
+            if not db_class:
+                print(f"Class with id {updated_class.id} not found.")
+                return None
+            
+            print(f"Updating a note of Class fields: name = '{updated_class.class_name}'")
+            # Update values
+            update_values = {
+                'note': updated_class.note
+            }
+            db_class.update(session, **update_values)
+            session.expunge(db_class)  
+            return db_class
+    except Exception as e:
+        print(f"An error occurred while updating a note of Class: {updated_class.id}.")
+        print(traceback.format_exc())
+    return None  
+
+def update_school(updated_school: StudyStreamSchool)-> StudyStreamSchool:
+    try:
+        with get_session() as session:
+            session.expire_on_commit = False
+            # Fetch the document
+            db_school = StudyStreamSchool.read(session, updated_school.id)
+            if not db_school:
+                print(f"Class with id {updated_school.id} not found.")
+                return None
+            
+            print(f"Updating Class fields: name = '{updated_school.name}'; school_type = '{updated_school.school_type}';  start_date = '{updated_school.start_date}'; finish_date = '{updated_school.finish_date}'")
+            # Update values
+            update_values = {
+                'name': updated_school.name,
+                'school_type': updated_school.school_type,
+                'start_date': updated_school.start_date,
+                'finish_date':  updated_school.finish_date
+            }
+            db_school.update(session, **update_values)
+            session.expunge(db_school)  
+            return db_school
+    except Exception as e:
+        print(f"An error occurred while updating School: {updated_school.id}.")
+        print(traceback.format_exc())
+    return None  

@@ -1,6 +1,6 @@
 .DS_Store
 __pycache__/
-model_cache/*
 .env
 chroma.sqlite3
+app/llm_modles/*
 app/model_cache/*
