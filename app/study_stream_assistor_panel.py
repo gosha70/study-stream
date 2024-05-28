@@ -1,5 +1,7 @@
 # Copyright (c) EGOGE - All Rights Reserved.
 # This software may be used and distributed according to the terms of the Apache-2.0 license.
+from datetime import datetime
+import pytz
 from PySide6.QtCore import QObject, Qt, QSize, QTimer
 from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget, QPushButton, QDockWidget, QHBoxLayout, QTextEdit
 from PySide6.QtGui import QIcon, QFont, QPixmap
@@ -12,11 +14,12 @@ from models.prompt_info import PromptInfo
 from models.model_info import ModelInfo
 from .study_stream_task import StudyStreamTaskWorker
 from .study_stream_error import StudyStreamException
-from .study_stream_message_type import StudyStreamMessageType
+from .study_stream_chat_icon_type import StudyStreamChatIconType
 from .study_stream_message_widget import StudyStreamMessageWidget
 from study_stream_api.study_stream_subject import StudyStreamSubject
 from study_stream_api.study_stream_message import StudyStreamMessage
 from study_stream_api.study_stream_note import StudyStreamNote
+from study_stream_api.study_stream_message_type import StudyStreamMessageType
 
 DEFAULT_STUDENT_NOTE = "Student Note"
 
@@ -87,14 +90,36 @@ class StudyStreamAssistorPanel(QDockWidget):
         self.datetime_css = self.color_scheme['datetime-css']
         self.datetime_user_css = self.color_scheme['datetime-user-css']
 
+        self.button_css = self.color_scheme['object-button-css']
+        self.button_hover_css = self.color_scheme['object-button-hover-css']
+        self.button_pressed_css = self.color_scheme['object-button-pressed-css']
+        self.disabled_button_css = self.color_scheme['disabled-object-button-css']
+        self.enabled_css = f"""
+            QPushButton {{
+                {self.button_css} 
+            }}
+            QPushButton:hover {{
+                {self.button_hover_css}   
+            }}
+            QPushButton:pressed {{
+                {self.button_pressed_css}
+            }}
+        """
+        self.disbaled_css = f"""
+            QPushButton {{
+                {self.disabled_button_css} 
+            }}
+            QPushButton:hover {{}}
+            QPushButton:pressed {{}}
+        """
+
         self.save_chat_button = QPushButton()
         icon_path = self.asserts_path + self.app_config['save_chat_icon']
         self.save_chat_button.setIcon(QIcon(icon_path))
         self.save_chat_button.setIconSize(QSize(32, 32))  # Increased icon size
         self.save_chat_button.setFixedSize(48, 48)
-        self.save_chat_button.setStyleSheet(self.icon_css)
         self.save_chat_button.clicked.connect(self.save_chat)
-        self.save_chat_button.setDisabled(True)
+        self.update_save_chat_button(is_enabled=False)
         input_area_layout.addWidget(self.save_chat_button, alignment=Qt.AlignmentFlag.AlignTop)
 
         self.chat_input_area = QTextEdit()
@@ -112,7 +137,8 @@ class StudyStreamAssistorPanel(QDockWidget):
         self.send_button.setIcon(self.send_button_icon)
         self.send_button.setIconSize(QSize(32, 32))  # Increased icon size
         self.send_button.setFixedSize(48, 48)
-        self.send_button.setStyleSheet(self.icon_css)
+        self.send_button.setStyleSheet(self.enabled_css)
+        self.send_button.setToolTip("Send your question!")
         self.send_button.clicked.connect(self.send_message)
         input_area_layout.addWidget(self.send_button, alignment=Qt.AlignmentFlag.AlignTop)
 
@@ -123,29 +149,34 @@ class StudyStreamAssistorPanel(QDockWidget):
 
     def set_study_taget(self, target: StudyStreamSubject):
         if target and (not self.study_target or target.id != self.study_target): 
+            clean_chat = True
+            if not self.study_target:
+                clean_chat = False
             self.study_target = target               
             self.title_lable.setText(self.study_target.class_name)
-            self.load_student_note(self.study_target.note)
+            self.load_student_note(self.study_target.note, clean_chat=clean_chat)
+            self.set_chat_state(is_chat_enabled=True)
         else:     
             self.title_lable.setText(DEFAULT_STUDENT_NOTE)
 
-    def load_student_note(self, note: StudyStreamNote):
-        self.clear_chat()
+    def load_student_note(self, note: StudyStreamNote, clean_chat: bool):
+        if clean_chat:
+            self.clear_chat() 
         if note:
             self.messages = note.to_messages()
             for message in self.messages:
-                if message.type == StudyStreamMessageType.USER:
+                if message.type == StudyStreamMessageType.QUESTION.value:
                     self.add_message(
-                        message=message,
-                        message_type=StudyStreamMessageType.USER,
+                        message=message.content,
+                        message_type=StudyStreamChatIconType.USER,
                         text_css=self.user_message,
                         icon_css=self.icon_css,
                         datetime_css=self.datetime_user_css
                     )
-                elif message.type == StudyStreamMessageType.SYSTEM:
+                elif message.type == StudyStreamMessageType.ANSWER.value:
                     self.add_message(
-                        message=message,
-                        message_type=StudyStreamMessageType.SYSTEM, 
+                        message=message.content,
+                        message_type=StudyStreamChatIconType.SYSTEM, 
                         text_css=self.ai_message, 
                         icon_css=self.ai_icon_css,
                         datetime_css=self.datetime_css
@@ -154,12 +185,13 @@ class StudyStreamAssistorPanel(QDockWidget):
             self.messages = []             
     
     def save_chat(self):
-        if self.study_target  and self.messages and len(self.messages) > 0:
+        print(f"save_chat: {self.study_target} - {self.messages}")
+        if self.study_target and self.messages and len(self.messages) > 0:
             json_txt = StudyStreamNote.messages_to_json(messages=self.messages)
-            self.study_target.note = json_txt            
-            updated_class = update_note(updated_class=self.study_target)
-            if updated_class:
-                self.attach_button.setDisabled(True) 
+            print(f"JSON: {json_txt}")         
+            updated_class = update_note(updated_class=self.study_target, note=json_txt)
+            if updated_class:                     
+                self.update_save_chat_button(is_enabled=False)
     
     def send_message(self):
         self.set_chat_state(is_chat_enabled=False)
@@ -168,14 +200,15 @@ class StudyStreamAssistorPanel(QDockWidget):
 
     def send_question(self, question: str):    
         new_message = StudyStreamMessage(
-            type=StudyStreamMessageType.USER,
-            content=question
+            type=StudyStreamMessageType.QUESTION,
+            content=question,
+            creation_time=datetime.now(tz=pytz.utc)
         )
         self.messages.append(new_message)
-        self.save_chat_button.setDisabled(False) 
+        self.update_save_chat_button(is_enabled=True)
         self.add_message(
             message=question, 
-            message_type=StudyStreamMessageType.USER, 
+            message_type=StudyStreamChatIconType.USER, 
             text_css=self.user_message, 
             icon_css=self.icon_css,
             datetime_css=self.datetime_user_css
@@ -205,14 +238,15 @@ class StudyStreamAssistorPanel(QDockWidget):
     def on_task_complete(self, results):            
         answer, docs = results["result"], results["source_documents"]          
         new_message = StudyStreamMessage(
-            type=StudyStreamMessageType.SYSTEM,
-            content=self.ai_message
+            type=StudyStreamMessageType.ANSWER,
+            content=answer,
+            creation_time=datetime.now(tz=pytz.utc)
         )
-        self.messages.append(new_message)
-        self.save_chat_button.setDisabled(False) 
+        self.messages.append(new_message)          
+        self.update_save_chat_button(is_enabled=True)
         self.add_message(
             message=answer, 
-            message_type=StudyStreamMessageType.SYSTEM, 
+            message_type=StudyStreamChatIconType.SYSTEM, 
             text_css=self.ai_message, 
             icon_css=self.ai_icon_css,
             datetime_css=self.datetime_css
@@ -230,7 +264,17 @@ class StudyStreamAssistorPanel(QDockWidget):
 
     def on_task_error(self, error):
         self.logging.info(f"Failed to get an answer from ai: {error}")
-        self.set_chat_state(is_chat_enabled=True)
+        self.set_chat_state(is_chat_enabled=True)        
+    
+    def update_save_chat_button(self, is_enabled: bool):
+        if is_enabled and self.study_target and self.messages and len(self.messages) > 0:
+            self.save_chat_button.setDisabled(False)
+            self.save_chat_button.setStyleSheet(self.enabled_css)
+            self.save_chat_button.setToolTip("Save your chat history!")
+        else:        
+            self.save_chat_button.setDisabled(True) 
+            self.save_chat_button.setStyleSheet(self.disbaled_css)
+            self.save_chat_button.setToolTip("Your chat history is saved!")
 
     def set_chat_state(self, is_chat_enabled: bool):
         if is_chat_enabled:
@@ -238,13 +282,13 @@ class StudyStreamAssistorPanel(QDockWidget):
                 self.timer.stop()
                 self.timer = None   
             self.rotate_icon_angle = 0      
-            self.save_chat_button.setDisabled(False)
+            self.update_save_chat_button(is_enabled=True)
             self.send_button.setDisabled(False)
             self.send_button.setIcon(self.send_button_icon)
             self.chat_input_area.setPlaceholderText(self.app_config['chat_ask_placeholder'])
             self.chat_input_area.setEnabled(True)
-        else: 
-            self.save_chat_button.setDisabled(True)
+        else:   
+            self.update_save_chat_button(is_enabled=False)
             self.send_button.setDisabled(True)
             self.chat_input_area.setPlaceholderText(self.app_config['chat_waiting_message'])
             self.chat_input_area.setEnabled(False)

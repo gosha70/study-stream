@@ -3,7 +3,7 @@
 from enum import Enum
 import fitz  # PyMuPDF
 from PySide6.QtCore import QObject, Qt
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QMessageBox, QPushButton, QLabel, QFileDialog, QListWidgetItem
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QMessageBox, QPushButton, QLabel, QFileDialog, QListWidgetItem, QScrollArea, QTextEdit)
 from PySide6.QtGui import QPixmap, QImage
 
 from langchain_community.vectorstores import Chroma
@@ -31,6 +31,7 @@ class StudyStreamDocumentView(QWidget):
         self.doc = None
         self.pdf_files = []
         self.page_index = 0
+        self.is_pdf = False
         self.initUI()
 
     def get_object_view(self) -> StudyStreamObjectView:
@@ -40,21 +41,30 @@ class StudyStreamDocumentView(QWidget):
         self.setMaximumHeight(self.parent.height() - 50)
         central_panel = QVBoxLayout(self)
 
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        
         self.pdf_view = QLabel()
         self.pdf_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.scroll_area.setWidget(self.pdf_view)
+
+        self.text_view = QTextEdit()
+        self.text_view.setReadOnly(True)
+        self.text_view.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
 
         self.object_view = StudyStreamObjectView(
             parent=self.parent, 
-            dependent_object=self.pdf_view,
             app_config=self.app_config, 
             color_scheme=self.object_color_scheme, 
             current_dir=self.asserts_path,
             db=self.docs_db,
             load_chat_lambda=self.load_chat_lambda,
+            enable_view_lambda=(lambda is_enabled: self.enable_doc_view(is_enabled)),
             logging=self.logging
         ) 
         central_panel.addWidget(self.object_view, alignment=Qt.AlignmentFlag.AlignTop)  
-        central_panel.addWidget(self.pdf_view)
+        central_panel.addWidget(self.scroll_area)
+        central_panel.addWidget(self.text_view)
 
         button_css = self.color_scheme['button-css']
         button_hover_css = self.color_scheme['button-hover-css']
@@ -89,7 +99,20 @@ class StudyStreamDocumentView(QWidget):
             }}
         """)
         central_panel.addWidget(self.btn_next)
-   
+
+    def enable_doc_view(self, is_enabled: bool):
+        print(f"enable_doc_view({is_enabled} - {self.is_pdf})")
+        if is_enabled:
+            if self.is_pdf:
+                self.scroll_area.setVisible(True)
+                self.text_view.setVisible(False)
+            else:   
+                self.scroll_area.setVisible(False)
+                self.text_view.setVisible(True) 
+        else:   
+            self.scroll_area.setVisible(False)
+            self.text_view.setVisible(False)
+
     def show_content(self, item):
         if isinstance(item, StudyStreamSubject):
             pass
@@ -109,18 +132,23 @@ class StudyStreamDocumentView(QWidget):
                 return
             
             if file_type_enum == FileType.PDF:
+                self.is_pdf = True
                 self.doc = fitz.open(path)
                 self.pdf_files.append(path)
                 self.load_document()
                 self.showPage(0)
+                self.scroll_area.setVisible(True)
+                self.text_view.setVisible(False)
             else:
+                self.is_pdf = False
                 self.show_text_document(path)
+                self.scroll_area.setVisible(False)
+                self.text_view.setVisible(True)
                 
     def show_text_document(self, path: str):
         with open(path, 'r') as file:
             content = file.read()
-            self.pdf_view.setText(content)
-            self.pdf_view.adjustSize()
+            self.text_view.setPlainText(content)
 
     def load_document(self):
         for file in self.pdf_files:

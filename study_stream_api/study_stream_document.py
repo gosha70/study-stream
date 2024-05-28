@@ -7,7 +7,6 @@ import pytz
 from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, SmallInteger
 from sqlalchemy.orm import relationship
 
-from .study_stream_message import StudyStreamMessage
 from .study_stream_note import Base
 from .study_stream_document_status import StudyStreamDocumentStatus
 
@@ -58,9 +57,6 @@ class StudyStreamDocument(Base):
     @file_type_enum.setter
     def file_type_enum(self, value: FileType):
         self.file_type = value.int_value  
-    
-    def add_message(self, session, message: StudyStreamMessage):
-        StudyStreamMessage.link_message(session, message.id, StudyStreamNoteLinkType.DOCUMENT, self.id)
 
     # CRUD operations
     @staticmethod

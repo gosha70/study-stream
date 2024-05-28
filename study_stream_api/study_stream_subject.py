@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP
 from sqlalchemy.orm import relationship
 from .study_stream_document import StudyStreamDocument
+from .study_stream_note import StudyStreamNote
 from .study_stream_note import Base
 
 """
@@ -34,9 +35,21 @@ class StudyStreamSubject(Base):
         session.add(subject)
         session.commit()
         return subject
+    
+    def update_note(self, session, json_content: str):
+        if not self.note:
+            print(f"StudyStreamNote - new")
+            self.note = StudyStreamNote(json_content=json_content, created_at=datetime.now(), updated_at=datetime.now())
+            self.note.subject_id = self.id
+            session.add(self.note)
+        else:
+            print(f"StudyStreamNote - update")
+            self.note.json_content = json_content
+            self.note.updated_at = datetime.now()
+        session.commit()
 
     @staticmethod
-    def read(session, subject_id):
+    def read(session, subject_id)-> 'StudyStreamSubject':
         return session.query(StudyStreamSubject).filter_by(id=subject_id).first()
 
     def update(self, session, **kwargs):

@@ -9,14 +9,14 @@ from PySide6.QtCore import QObject, QSize, Qt, QDateTime, QTimer
 from langchain_community.vectorstores import Chroma
 from embeddings.unstructured.document_splitter import DocumentSplitter
 from embeddings.embedding_database import add_file_content_to_db
-from db.study_stream_dao import update_document, update_class, update_school, delete_entity
+from db.study_stream_dao import update_document, update_class, update_school, delete_entity, get_school_with_subjects, get_subject
 from .study_stream_task import StudyStreamTaskWorker
-from .study_stream_message_type import StudyStreamMessageType
 from study_stream_api.study_stream_document import StudyStreamDocument
 from study_stream_api.study_stream_school import StudyStreamSchool
 from study_stream_api.study_stream_subject import StudyStreamSubject
 from study_stream_api.study_stream_school_type import StudyStreamSchoolType
 from study_stream_api.study_stream_document_status import StudyStreamDocumentStatus
+from .study_stream_chat_icon_type import StudyStreamChatIconType
 from embeddings.unstructured.file_type import FileType
 
 
@@ -35,16 +35,16 @@ class StudyStreamObjectView(QWidget):
     def __init__(
             self, 
             parent: QObject,
-            dependent_object: QLabel, 
             app_config,  
             color_scheme, 
             current_dir: str, 
             db: Chroma, 
             load_chat_lambda,
+            enable_view_lambda,
             logging):
         super().__init__(parent)
         self.parent = parent
-        self.dependent_object = dependent_object
+        self.enable_view_lambda = enable_view_lambda
         self.current_dir = current_dir   
         self.app_config = app_config 
         self.color_scheme = color_scheme
@@ -250,13 +250,17 @@ class StudyStreamObjectView(QWidget):
         self.update_content(is_enabled=checked)
 
     def update_content(self, is_enabled: bool):   
-        self.content_area.setVisible(is_enabled) 
-        self.dependent_object.setVisible(not is_enabled)        
+        self.content_area.setVisible(is_enabled)      
         self.save_button.setVisible(is_enabled) 
         if self.study_class:
             self.start_chat_button.setVisible(is_enabled) 
+            self.enable_view_lambda(False) 
         else:   
-            self.start_chat_button.setVisible(False)   
+            self.start_chat_button.setVisible(False)  
+            if self.study_school:
+                self.enable_view_lambda(False) 
+            else:
+                self.enable_view_lambda(not is_enabled)      
         self.delete_button.setVisible(is_enabled)     
         self.show_llm_button(is_enabled) 
 
@@ -287,21 +291,21 @@ class StudyStreamObjectView(QWidget):
         self.on_save_item = on_save_item
         self.reset_content()
         if school:
-            self.study_school = school
-            self.title_button.setText(school.name)
+            self.study_school = get_school_with_subjects(school_id=school.id)
+            self.title_button.setText(self.study_school.name)
             self.title_button.setIcon(self.class_icon)
 
-            school_icon = self.get_school_type(school_type=school.school_type_enum)
+            school_icon = self.get_school_type(school_type=self.study_school.school_type_enum)
 
             fields_grid = QGridLayout()
-            self.create_document_field(fields_grid, "School Name:", school.name, 0, 
-                                       setter_lambda=lambda text: setattr(school, 'name', text),is_read_only=False, field_icon=school_icon)
-            self.create_datetime_field(fields_grid, "Start Date:", school.start_date, 1, 
-                                       lambda qdatetime: setattr(school, 'start_date', qdatetime.toPython()),is_read_only=False)
-            self.create_datetime_field(fields_grid, "Graduation Date:", school.finish_date, 2, 
-                                       lambda qdatetime: setattr(school, 'finish_date', qdatetime.toPython()),is_read_only=False)
+            self.create_document_field(fields_grid, "School Name:", self.study_school.name, 0, 
+                                       setter_lambda=lambda text: setattr(self.study_school, 'name', text),is_read_only=False, field_icon=school_icon)
+            self.create_datetime_field(fields_grid, "Start Date:", self.study_school.start_date, 1, 
+                                       lambda qdatetime: setattr(self.study_school, 'start_date', qdatetime.toPython()),is_read_only=False)
+            self.create_datetime_field(fields_grid, "Graduation Date:", self.study_school.finish_date, 2, 
+                                       lambda qdatetime: setattr(self.study_school, 'finish_date', qdatetime.toPython()),is_read_only=False)
             self.content_area_layout.addLayout(fields_grid)
-            self.add_subject_card(subjects=school.subjects)
+            self.add_subject_card(subjects=self.study_school.subjects)
             self.enable_content()     
             self.update_content(is_enabled=True)     
             self.title_button.setDisabled(True) 
@@ -357,17 +361,17 @@ class StudyStreamObjectView(QWidget):
         self.on_save_item = on_save_item
         self.reset_content()
         if subject:
-            self.study_class = subject
-            self.title_button.setText(subject.class_name)
+            self.study_class = get_subject(subject_id=subject.id)
+            self.title_button.setText(self.study_class.class_name)
             self.title_button.setIcon(self.class_icon)
 
             fields_grid = QGridLayout()
-            self.create_document_field(fields_grid, "Class Name:", subject.class_name, 0, 
-                                       setter_lambda=lambda text: setattr(subject, 'class_name', text), is_read_only=False)
-            self.create_datetime_field(fields_grid, "Start Date:", subject.start_date, 1, 
-                                       lambda qdatetime: setattr(subject, 'start_date', qdatetime.toPython()), is_read_only=False)
-            self.create_datetime_field(fields_grid, "Graduation Date:", subject.finish_date, 2, 
-                                       lambda qdatetime: setattr(subject, 'finish_date', qdatetime.toPython()), is_read_only=False)
+            self.create_document_field(fields_grid, "Class Name:", self.study_class.class_name, 0, 
+                                       setter_lambda=lambda text: setattr(self.study_class, 'class_name', text), is_read_only=False)
+            self.create_datetime_field(fields_grid, "Start Date:", self.study_class.start_date, 1, 
+                                       lambda qdatetime: setattr(self.study_class, 'start_date', qdatetime.toPython()), is_read_only=False)
+            self.create_datetime_field(fields_grid, "Graduation Date:", self.study_class.finish_date, 2, 
+                                       lambda qdatetime: setattr(self.study_class, 'finish_date', qdatetime.toPython()), is_read_only=False)
             self.content_area_layout.addLayout(fields_grid)
             self.add_document_card(documents=self.study_class.documents)
             self.enable_content()   
@@ -429,21 +433,24 @@ class StudyStreamObjectView(QWidget):
         self.reset_content()
         if document:
             self.study_doc = document
-            self.title_button.setText(document.name)
+            self.title_button.setText(self.study_doc.name)
             self.title_button.setIcon(self.doc_icon)
-            field_type = document.file_type_enum
-            doc_icon = self.get_document_icon(file_type=field_type)
-            fields_grid = QGridLayout()
-            self.create_document_field(fields_grid, "File Name:", document.name, 0, 
-                                       setter_lambda=lambda text: setattr(document, 'name', text), is_read_only=False, field_icon=doc_icon)
-            self.create_document_field(fields_grid, "File Path:", document.file_path, 1, is_read_only=True)
-            self.create_document_field(fields_grid, "Status:", document.status_enum.name, 2, is_read_only=True)
-            self.create_datetime_field(fields_grid, "Created On:", document.creation_date, 3, is_read_only=True)
-            self.create_datetime_field(fields_grid, "Processed On:", document.processed_date, 4, is_read_only=True)
-            self.create_datetime_field(fields_grid, "Analyzed Since:", document.in_progress_date, 5, is_read_only=True)
-            self.content_area_layout.addLayout(fields_grid)        
-            self.enable_delete_button(document.status_enum == StudyStreamDocumentStatus.NEW)
+            self.create_doc_fields_grid()
             self.enable_content()
+
+    def create_doc_fields_grid(self):
+        field_type = self.study_doc.file_type_enum
+        doc_icon = self.get_document_icon(file_type=field_type)
+        fields_grid = QGridLayout()
+        self.create_document_field(fields_grid, "File Name:", self.study_doc.name, 0, 
+                                    setter_lambda=lambda text: setattr(self.study_doc, 'name', text), is_read_only=False, field_icon=doc_icon)
+        self.create_document_field(fields_grid, "File Path:", self.study_doc.file_path, 1, is_read_only=True)
+        self.create_document_field(fields_grid, "Status:", self.study_doc.status_enum.name, 2, is_read_only=True)
+        self.create_datetime_field(fields_grid, "Created On:", self.study_doc.creation_date, 3, is_read_only=True)
+        self.create_datetime_field(fields_grid, "Processed On:", self.study_doc.processed_date, 4, is_read_only=True)
+        self.create_datetime_field(fields_grid, "Analyzed Since:", self.study_doc.in_progress_date, 5, is_read_only=True)
+        self.content_area_layout.addLayout(fields_grid)        
+        self.enable_delete_button(self.study_doc.status_enum == StudyStreamDocumentStatus.NEW)
 
     def enable_content(self):
         self.title_button.setCheckable(True)
@@ -576,7 +583,7 @@ class StudyStreamObjectView(QWidget):
         if self.document_in_progress:
             self.logging.info(f"Has finished processing '{self.document_in_progress.name}': {result}")
             self.document_in_progress.status_enum = StudyStreamDocumentStatus.PROCESSED
-            self.update_document_on_finished_load(updated_document=self.document_in_progress)              
+            self.update_document_on_finished_load()              
 
     def on_task_error(self, error):
         if self.file_in_progress:
@@ -584,22 +591,25 @@ class StudyStreamObjectView(QWidget):
             if isinstance(item_target, StudyStreamDocument):
                 self.logging.info(f"Failed to rocess '{item_target.name}': {error}")
                 self.document_in_progress.status_enum = StudyStreamDocumentStatus.NEW
-                self.update_document_on_finished_load(updated_document=self.document_in_progress)  
+                self.update_document_on_finished_load()  
 
-    def update_document_on_finished_load(self, updated_document: StudyStreamDocument):
+    def update_document_on_finished_load(self):
         if self.timer:
             self.timer.stop()
             self.timer = None  
+        self.llm_button.setVisible(False)    
         updated_doc = update_document(updated_document=self.document_in_progress)
         if self.study_doc and self.study_doc.id == updated_doc.id:
             self.study_doc = updated_doc
             if self.on_save_item:
                 self.on_save_item(entity=self.study_doc)
+            self.clear_layout(self.content_area_layout)
+            self.create_doc_fields_grid()
         self.document_in_progress = None                 
         self.on_click() 
 
     def rotate_icon(self):    
-        new_icon, self.rotate_icon_angle = StudyStreamMessageType.rotate_icon(
+        new_icon, self.rotate_icon_angle = StudyStreamChatIconType.rotate_icon(
             rotating_icon=self.rotating_icon, 
             rotate_icon_angle=self.rotate_icon_angle
         )

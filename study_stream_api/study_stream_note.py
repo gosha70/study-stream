@@ -26,18 +26,23 @@ class StudyStreamNote(Base):
 
     subject = relationship("StudyStreamSubject", back_populates="note")
 
-    def __init__(self, json_content: str, created_at: datetime):
+    def __init__(self, json_content: str, created_at: datetime, updated_at: datetime):
         self.json_content = json_content
         self.created_at = created_at
+        self.updated_at = updated_at
 
     def to_messages(self) -> List[StudyStreamMessage]:
-        messages_data = json.loads(self.json_content)
+        # Check if json_content is a string and convert to list if needed
+        if isinstance(self.json_content, str):
+            messages_data = json.loads(self.json_content)
+        else:
+            messages_data = self.json_content  # assuming it's already a list
         messages = []
         for msg_data in messages_data:
-            message = StudyStreamMessage(
+            message = StudyStreamMessage(                
                 type=StudyStreamMessageType(msg_data['type']),
                 content=msg_data['content'],
-                created_at=datetime.fromisoformat(msg_data['created_at'])
+                creation_time=datetime.fromisoformat(msg_data['created_at'])
             )
             messages.append(message)
         messages.sort(key=lambda msg: msg.created_at)

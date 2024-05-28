@@ -9,14 +9,18 @@ Stores the information of user interaction and messaging with the Study Stream a
 """
 class StudyStreamMessage:
 
-    def __init__(self, type: StudyStreamMessageType, content: str):
-        self.type = type
+    def __init__(self, type: StudyStreamMessageType, content: str, creation_time):
+        self.type = type.value
         self.content = content
-        self.created_at = datetime.now(tz=pytz.utc)
+        self.created_at = creation_time
+
+    @property
+    def school_type_enum(self)-> StudyStreamMessageType:
+        return StudyStreamMessageType(self.type)     
 
     def to_dict(self):
         return {
-            'type': self.type.value,
+            'type': self.type,
             'content': self.content,
             'created_at': self.created_at.isoformat()
         }

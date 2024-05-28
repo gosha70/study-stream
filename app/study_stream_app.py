@@ -172,7 +172,7 @@ if __name__ == '__main__':
     with open(current_dir + '/app_config.json', 'r') as file:
         app_config = json.load(file)    
 
-    verbose = True  
+    verbose = False  
 
     check_study_stream_database(logging)
 

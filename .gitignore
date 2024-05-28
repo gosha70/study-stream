@@ -4,3 +4,4 @@ __pycache__/
 chroma.sqlite3
 app/llm_modles/*
 app/model_cache/*
+app/study_document/*

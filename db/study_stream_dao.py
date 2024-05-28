@@ -145,17 +145,43 @@ def check_study_stream_database(logging):
     
     conn.close()
 
+def get_subject(subject_id):
+    print(f"DB Fetch for Subject: {subject_id}")
+    try:
+        with get_session() as session:
+            subject = (session.query(StudyStreamSubject)
+                .options(
+                    joinedload(StudyStreamSubject.documents),
+                    joinedload(StudyStreamSubject.note)
+                )
+                .filter_by(id=subject_id)
+                .first())   
+            process_subject(session, subject)
+            return subject
+    except Exception as e:
+        print(f"An error occurred while fetching a subject '{subject_id}' with related data.")
+        print(traceback.format_exc())
+    return None   
+
 def get_school_with_subjects(school_id):
     print(f"DB Fetch for School: {school_id}")
     try:
         with get_session() as session:
-            school = session.query(StudyStreamSchool).options(joinedload(StudyStreamSchool.subjects)).filter_by(id=school_id).first()  
+            school = (session.query(StudyStreamSchool)
+                .options(
+                    joinedload(StudyStreamSchool.subjects)
+                    .joinedload(StudyStreamSubject.documents),
+                    joinedload(StudyStreamSchool.subjects)
+                    .joinedload(StudyStreamSubject.note)
+                )
+                .filter_by(id=school_id)
+                .first())  
             process_school(session,school) 
             return school  
     except Exception as e:
-        print("An error occurred while fetching schools with related data.")
+        print(f"An error occurred while fetching a school '{school_id} with related data.")
         print(traceback.format_exc())
-    return []  
+    return None  
 
 def fetch_all_schools_with_related_data() -> List[StudyStreamSchool]:
     try:
@@ -177,16 +203,19 @@ def fetch_all_schools_with_related_data() -> List[StudyStreamSchool]:
 def process_school(session, school: StudyStreamSchool):
     print(f"DB Fetch for School: {school.name}, Type: {school.school_type}")
     for subject in school.subjects:
-        print(f"DB Fetch for Subject: {subject.class_name}")
-        if subject.note:
-            messages = subject.note.to_messages()
-            for message in messages:
-                print(f"    Message: {message.content}, Created At: {message.created_at}")
-        for document in subject.documents:
-            print(f"DB Fetch for Document: {document.name}, File Path: {document.file_path}, Status: {document.status}")
-            session.expunge(document)
-        session.expunge(subject)
+        process_subject(session, subject)
     session.expunge(school)
+
+def process_subject(session, subject: StudyStreamSubject): 
+    print(f"DB Fetch for Subject: {subject.class_name}")
+    if subject.note:
+        messages = subject.note.to_messages()
+        #for message in messages:
+        #    print(f"    Message: {message.content}, Created At: {message.created_at}")
+    for document in subject.documents:
+        #print(f"DB Fetch for Document: {document.name}, File Path: {document.file_path}, Status: {document.status}")
+        session.expunge(document)
+    session.expunge(subject)  
 
 def fetch_messages_for_subject(session, subject_id):
     subject = session.query(StudyStreamSubject).options(joinedload(StudyStreamSubject.note)).filter_by(id=subject_id).first()
@@ -266,7 +295,7 @@ def update_class(updated_class: StudyStreamSubject)-> StudyStreamSubject:
         print(traceback.format_exc())
     return None  
 
-def update_note(updated_class: StudyStreamSubject)-> StudyStreamSubject:
+def update_note(updated_class: StudyStreamSubject, note: str)-> StudyStreamSubject:
     try:
         with get_session() as session:
             session.expire_on_commit = False
@@ -276,12 +305,8 @@ def update_note(updated_class: StudyStreamSubject)-> StudyStreamSubject:
                 print(f"Class with id {updated_class.id} not found.")
                 return None
             
-            print(f"Updating a note of Class fields: name = '{updated_class.class_name}'")
-            # Update values
-            update_values = {
-                'note': updated_class.note
-            }
-            db_class.update(session, **update_values)
+            print(f"Updating a note of Class fields: name = '{db_class}'")
+            db_class.update_note(session, json_content=note)
             session.expunge(db_class)  
             return db_class
     except Exception as e:

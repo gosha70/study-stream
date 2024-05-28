@@ -38,8 +38,10 @@ class StudyStreamTaskWorker(QObject):
             self.error.emit(e)
 
     def finished_handling(self, result):
-        print("Task completed with result:", result)
+        #print("Task completed with result:", result)
         # Add more finished handling logic here
+        print("Task is completed !!!")
+        pass
 
     def error_handling(self, error):
         print("An error occurred:", error)

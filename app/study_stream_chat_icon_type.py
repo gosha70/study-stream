@@ -8,7 +8,7 @@ from PySide6.QtGui import QIcon, QPixmap, QTransform
 # Static dictionary to hold additional data
 icon_map = {}
 
-class StudyStreamMessageType(Enum):
+class StudyStreamChatIconType(Enum):
     USER = ("user_icon")
     SYSTEM = ("system_icon")
     BOOKMARK = ("file_attach_icon")

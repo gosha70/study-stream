@@ -1,5 +1,7 @@
 # Copyright (c) EGOGE - All Rights Reserved.
 # This software may be used and distributed according to the terms of the Apache-2.0 license.
+import os
+import shutil
 from typing import List
 
 from PySide6.QtCore import QObject, Qt, QSize
@@ -238,7 +240,8 @@ class StudyStreamDirectoryPanel(QDockWidget):
         # School is always at the top level 
         self.class_tree.addTopLevelItem(school_node)  
         self.selected_school = school_node    
-        self.class_tree.editItem(school_node, 0)  # Optional
+        self.class_tree.editItem(school_node, 0)  # Optional  
+        #self.disable_editing(root=None, node=school_node)  
 
         return school_node
 
@@ -261,7 +264,8 @@ class StudyStreamDirectoryPanel(QDockWidget):
         class_node.setIcon(0, self.class_icon) 
         class_node.setFlags(class_node.flags() | Qt.ItemFlag.ItemIsEditable)  # Make the item editable         
         class_node.setData(0, Qt.ItemDataRole.UserRole, subject_entity)
-        parent_node.addChild(class_node)  
+        parent_node.addChild(class_node)    
+        #self.disable_editing(root=parent_node, node=class_node)  
         if with_select:  
             self.class_tree.expandItem(parent_node) 
             self.selected_folder = class_node    
@@ -277,24 +281,39 @@ class StudyStreamDirectoryPanel(QDockWidget):
         # Define file dialog filter for supported file types
         file_filter = "Supported files (*.csv *.ddl *.xlsx *.java *.js *.json *.html *.md *.pdf *.py *.rtf *.sql *.txt *.xml *.xsl *.yaml);;All files (*)"
         
-        path, _ = QFileDialog.getOpenFileName(self.parent, "Open File", "", file_filter)
-        if path:
-            doc_name = path.split('/')[-1]
+        doc_path, _ = QFileDialog.getOpenFileName(self.parent, "Open File", "", file_filter)
+        if doc_path:
+            doc_name = doc_path.split('/')[-1]
             file_type_enum = FileType.from_str_by_extension(file_name=doc_name) 
             if file_type_enum is None:
                 QMessageBox.warning(self, 'Unsupported File Type', 'The selected file type is not supported.')
                 return
             
+             # Define the document folder path
+            document_folder = self.get_document_folder()
+            
+            # Create the document folder if it doesn't exist
+            os.makedirs(document_folder, exist_ok=True)
+
+            # Define the destination path
+            destination_path = os.path.join(document_folder, doc_name)
+            
+            # Copy the file to the document folder
+            shutil.copy(doc_path, destination_path)
+
             class_entity = self.selected_folder.data(0, Qt.ItemDataRole.UserRole)
             doc_entity = StudyStreamDocument(
                 name=doc_name, 
-                file_path=path, 
+                file_path=destination_path,  # Update the file path to the new location
                 file_type_enum=file_type_enum,
                 status_enum=StudyStreamDocumentStatus.NEW
             )
             doc_entity.subject_id = class_entity.id
             doc_entity = create_entity(doc_entity)
             self.add_document(document_entity=doc_entity, parent_node=self.selected_folder, with_select=True)
+
+    def get_document_folder(self)-> str:
+        return self.asserts_path + "/" + os.getenv("DOCUMENT_FOLDER") 
 
     def add_document(self, document_entity: StudyStreamDocument, parent_node: QTreeWidgetItem, with_select=False)-> QTreeWidgetItem: 
         if parent_node is None:      
@@ -307,14 +326,20 @@ class StudyStreamDirectoryPanel(QDockWidget):
             new_file.setIcon(0, self.active_file_icon) 
         else:   
             new_file.setIcon(0, self.inactive_file_icon)   
-        self.document_view.show_content(item=document_entity)            
+        #self.document_view.show_content(item=document_entity)            
         new_file.setData(0, Qt.ItemDataRole.UserRole, document_entity)
-        parent_node.addChild(new_file)     
+        parent_node.addChild(new_file)   
+        #self.disable_editing(root=parent_node, node=new_file)  
         if with_select is None:        
             self.class_tree.expandItem(parent_node)
             self.selected_file = new_file     
 
         return new_file   
+        
+    def disable_editing(self, root, node):
+        if not root:
+            root = self.class_tree.invisibleRootItem()
+        node.setFlags(root.flags() & ~Qt.ItemIsEditable)
     
     def handle_selection_changed(self):
         current_item = self.class_tree.currentItem()
