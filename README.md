@@ -80,4 +80,16 @@ The `Study Stream Settings` dialog allows a user to customize the application pr
 - Change the connection to the local database 
 
 
+#### `05`/`28`/`2024`
+- Enhnaced PDF view allows a user send a question with the selected document content to AI:
+<img width="1725" alt="image" src="https://github.com/gosha70/study-stream/assets/17832712/a107bf11-1b2a-44b3-8408-3c69c88d7f46">
+
+- Allow to add and processed all supported document types, sush: `Java`, `Python`, `Json`, `CSV`, etc.
+
+- Allow to save and load the chat history to/from the database
+
+  
+
+
+
 
