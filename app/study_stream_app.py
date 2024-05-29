@@ -115,6 +115,7 @@ class StudyStreamApp(QMainWindow):
             verbose=self.verbose,
             db=self.docs_db,
             load_chat_lambda=self.right_panel.set_study_taget,
+            send_ai_message=(lambda question: self.right_panel.send_question(question)), 
             logging=self.logging
         )    
 

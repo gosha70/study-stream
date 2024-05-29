@@ -35,10 +35,10 @@
         "item-card-css": "border: 2px solid #ccc; border-radius: 5px; padding: 5px; margin: 4px; background-color: #f9f9f9;",
         "item-card-icon-css": "border: none;",
         "item-card-label-css": "border: none; font-weight: bold; font-size: 14px; margin-top: 8px;",
-        "object-button-css": "font-weight: normal; background-color: #444; color: #FF9922; border: 4px solid #FF9922; border-radius: 5px; padding: 5px; margin: auto;",
+        "object-button-css": "font-weight: normal; background-color: #20c4ca; color: #FF9922; border: 4px solid #FF9922; border-radius: 5px; padding: 5px; margin: auto;",
         "object-button-hover-css": "font-weight: bold; color: #555; border: 3px solid #884e0c; border-radius: 5px; padding: 5px;",
         "object-button-pressed-css": "font-weight: bold; color: #AAA; border: none;",
-        "disabled-object-button-css": "font-weight: normal; color: #555; border: 4px solid #555; border-radius: 5px; padding: 5px; margin: auto;"    
+        "disabled-object-button-css": "background-color: #777; font-weight: normal; color: #555; border: 4px solid #555; border-radius: 5px; padding: 5px; margin: auto;"    
     },
     "right_panel": {
         "object-button-css": "background-color: #444; border: 3px solid #FF9922; border-radius: 5px; padding: 5px;",

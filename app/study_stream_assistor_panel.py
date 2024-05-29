@@ -198,7 +198,9 @@ class StudyStreamAssistorPanel(QDockWidget):
         question = self.chat_input_area.toPlainText()
         self.send_question(question=question)
 
-    def send_question(self, question: str):    
+    def send_question(self, question: str)-> bool:    
+        if self.timer:
+            return False
         new_message = StudyStreamMessage(
             type=StudyStreamMessageType.QUESTION,
             content=question,
@@ -218,6 +220,8 @@ class StudyStreamAssistorPanel(QDockWidget):
         self.timer.timeout.connect(self.rotate_icon)
         self.timer.start(500)
         self.async_task_question(question=question)  
+
+        return True
     
     def async_task_question(self, question: str):   
         self.file_task = StudyStreamTaskWorker(self.ask_ai, question)
@@ -226,7 +230,7 @@ class StudyStreamAssistorPanel(QDockWidget):
         self.file_task.run()    
     
     def rotate_icon(self):    
-        new_icon, self.rotate_icon_angle =StudyStreamMessageType.rotate_icon(
+        new_icon, self.rotate_icon_angle = StudyStreamChatIconType.rotate_icon(
             rotating_icon=self.rotating_send_button_icon, 
             rotate_icon_angle=self.rotate_icon_angle
         )
