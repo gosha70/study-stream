@@ -73,7 +73,7 @@ When the application runs for the first time, it will create the **PostgreSQL** 
 - `DB_HOST`=localhost
 - `DB_PORT`=5432
 
-If you have **PostgreSQL** installed on your machine, you can create `/profiles/.env` with the following customized parameters before running the application:
+If you have **PostgreSQL** installed on your machine, you can create [/profiles/.env](https://github.com/gosha70/study-stream/blob/main/profiles/.env) with the following customized parameters before running the application:
 ```plaintext
 LLM_FOLDER=llm_models
 DOCUMENT_FOLDER=study_document
