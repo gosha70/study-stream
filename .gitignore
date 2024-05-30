@@ -1,7 +1,6 @@
 .DS_Store
 __pycache__/
-.env
 chroma.sqlite3
-app/llm_modles/*
+app/llm_models/*
 app/model_cache/*
 app/study_document/*

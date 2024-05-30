@@ -1,6 +1,8 @@
 # Copyright (c) EGOGE - All Rights Reserved.
 # This software may be used and distributed according to the terms of the Apache-2.0 license.
 from datetime import datetime
+from typing import Dict
+import json
 import pytz
 from PySide6.QtCore import QObject, Qt, QSize, QTimer
 from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget, QPushButton, QDockWidget, QHBoxLayout, QTextEdit
@@ -84,7 +86,8 @@ class StudyStreamAssistorPanel(QDockWidget):
 
         # CSS for chat
         self.icon_css = self.color_scheme['chat-icon-css']
-        self.ai_icon_css = self.color_scheme['ai-icon-css']
+        self.ai_icon_css = self.color_scheme['ai-icon-css']        
+        self.comment_message = self.color_scheme['comment-css']        
         self.user_message = self.color_scheme['user-message-css']
         self.ai_message = self.color_scheme['ai-message-css']
         self.datetime_css = self.color_scheme['datetime-css']
@@ -182,7 +185,41 @@ class StudyStreamAssistorPanel(QDockWidget):
                         datetime_css=self.datetime_css
                     ) 
         else:
-            self.messages = []             
+            self.messages = []      
+
+    def add_bookmark(self, bookmark: Dict):
+        print(f'BOOKMARK: {bookmark}')
+        # Convert dictionary to a JSON-formatted string with indentation
+        dict_str = json.dumps(bookmark, indent=4)
+
+        # Construct a markdown-friendly string
+        if bookmark['comment']:
+            bookmark_markdown = f"""
+            Bookmark at the page #{bookmark['page']} of **{bookmark['file'].split('/')[-1]}**
+              - Selected Text: _{bookmark['text']}_
+              - Comment: _{bookmark['comment']}_
+            """
+        else:    
+            bookmark_markdown = f"""            
+            Bookmark at the page #{bookmark['page']} of **{bookmark['file'].split('/')[-1]}**
+              - Selected Text: _{bookmark['text']}_
+            """
+
+        new_message = StudyStreamMessage(
+            type=StudyStreamMessageType.BOOKMARK,
+            content=dict_str,
+            creation_time=datetime.now(tz=pytz.utc)
+        )
+        
+        self.messages.append(new_message)          
+        self.update_save_chat_button(is_enabled=True)
+        self.add_message(
+            message=bookmark_markdown, 
+            message_type=StudyStreamChatIconType.BOOKMARK, 
+            text_css=self.comment_message, 
+            icon_css=self.icon_css,
+            datetime_css=self.datetime_user_css
+        ) 
     
     def save_chat(self):
         print(f"save_chat: {self.study_target} - {self.messages}")

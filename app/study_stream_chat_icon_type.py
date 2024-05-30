@@ -11,7 +11,7 @@ icon_map = {}
 class StudyStreamChatIconType(Enum):
     USER = ("user_icon")
     SYSTEM = ("system_icon")
-    BOOKMARK = ("file_attach_icon")
+    BOOKMARK = ("comment_icon")
 
     def __init__(self, icon_key):
         self.icon_key = icon_key

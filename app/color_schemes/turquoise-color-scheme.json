@@ -52,6 +52,7 @@
         "datetime-css": "color: #AAA; font-style: italic;",
         "datetime-user-css": "margin-right: 100px; color: #AAA; font-style: italic;",
         "user-message-css": "vertical-align: text-top; border: 3px solid #755c09; border-radius: 15px; padding: 10px; margin-left: 10px; margin-right: 100px; background-color: #e8bf87; color: #063a4e;",
+        "comment-css": "vertical-align: text-top; border: 3px solid #5ca0d0; border-radius: 15px; padding: 10px; margin-left: 10px; margin-right: 100px; background-color: #6dbdf5; color: #222255;",      
         "ai-icon-css": "border: none; border-radius: 24px; margin-left: 90px;",
         "ai-message-css": "vertical-align: text-top; border: 4px solid #028090; border-radius: 15px; padding: 10px; margin-left: 100px; background-color: #4FBDBA; color: #045152;"
     }  

@@ -112,10 +112,11 @@ class StudyStreamApp(QMainWindow):
             app_config=self.app_config, 
             main_color_scheme=self.settings_dialog.get_color_scheme(),
             asserts_path=self.current_dir,
-            verbose=self.verbose,
             db=self.docs_db,
             load_chat_lambda=self.right_panel.set_study_taget,
             send_ai_message=(lambda question: self.right_panel.send_question(question)), 
+            add_bookmark=(lambda bookmark: self.right_panel.add_bookmark(bookmark)), 
+            verbose=self.verbose,
             logging=self.logging
         )    
 

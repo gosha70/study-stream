@@ -5,19 +5,31 @@ import fitz  # PyMuPDF
 from PySide6.QtCore import QObject, Qt
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QMessageBox, QPushButton, QLabel, QFileDialog, QListWidgetItem, QScrollArea, QTextEdit)
 from PySide6.QtGui import QPixmap, QImage
+from PySide6.QtWebChannel import QWebChannel
 
 from langchain_community.vectorstores import Chroma
 
 from study_stream_api.study_stream_subject import StudyStreamSubject
 from study_stream_api.study_stream_document import StudyStreamDocument
 from .study_stream_object_view import StudyStreamObjectView
-from .pdf_viewer import PDFView
+from .study_stream_pdf_viewer import StudyStreamPdfView
 
 from embeddings.unstructured.file_type import FileType
 
 
 class StudyStreamDocumentView(QWidget):
-    def __init__(self, parent: QObject, app_config, main_color_scheme, asserts_path: str, db: Chroma, load_chat_lambda, send_ai_message, verbose: bool, logging):
+    def __init__(
+            self, 
+            parent: QObject, 
+            app_config, 
+            main_color_scheme, 
+            asserts_path: str, 
+            db: Chroma, 
+            load_chat_lambda, 
+            send_ai_message, 
+            add_bookmark,
+            verbose: bool, 
+            logging):
         super().__init__()
         self.parent = parent
         self.logging = logging
@@ -25,6 +37,7 @@ class StudyStreamDocumentView(QWidget):
         self.docs_db = db
         self.load_chat_lambda = load_chat_lambda
         self.send_ai_message = send_ai_message
+        self.add_bookmark = add_bookmark
         self.color_scheme = main_color_scheme['center_panel']
         self.object_color_scheme = main_color_scheme['settings-css']
         self.app_config = app_config
@@ -47,7 +60,8 @@ class StudyStreamDocumentView(QWidget):
         self.scroll_area.setStyleSheet(self.color_scheme['button-css'])
         self.scroll_area.setWidgetResizable(True)
         
-        self.pdf_view = PDFView(ai_observer=self.send_ai_message)
+        self.pdf_view = StudyStreamPdfView(ai_observer=self.send_ai_message)
+        self.pdf_view.bookmark_signal.connect(self.add_bookmark)
         #self.pdf_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.scroll_area.setWidget(self.pdf_view)
 
@@ -105,7 +119,7 @@ class StudyStreamDocumentView(QWidget):
         '''
 
     def enable_doc_view(self, is_enabled: bool):
-        print(f"enable_doc_view({is_enabled} - {self.is_pdf})")
+        #print(f"enable_doc_view({is_enabled} - {self.is_pdf})")
         if is_enabled:
             if self.is_pdf:
                 self.scroll_area.setVisible(True)

@@ -273,10 +273,17 @@ class StudyStreamObjectView(QWidget):
                     self.llm_button.setStyleSheet(self.enabled_css)
                     self.llm_button.setIcon(self.load_icon)
                 elif self.study_doc.status == StudyStreamDocumentStatus.IN_PROGRESS.value:
-                    self.llm_button.setVisible(True)
-                    self.llm_button.setDisabled(True)
-                    self.llm_button.setStyleSheet(self.disbaled_css)
-                    self.llm_button.setIcon(self.loading_icon)            
+                    if self.document_in_progress:
+                        self.llm_button.setVisible(True)
+                        self.llm_button.setDisabled(True)
+                        self.llm_button.setStyleSheet(self.disbaled_css)
+                        self.llm_button.setIcon(self.loading_icon)  
+                    else: 
+                        # Something went wrong, - we should allow to re-processed !
+                        self.llm_button.setVisible(True)
+                        self.llm_button.setDisabled(False)
+                        self.llm_button.setStyleSheet(self.enabled_css)
+                        self.llm_button.setIcon(self.load_icon)             
             elif self.document_in_progress:
                 self.llm_button.setToolTip(f"Please wait ! Analyzing {self.document_in_progress.name} ...")  
                 self.llm_button.setDisabled(False)
